@@ -422,59 +422,9 @@ tr:last-child td {
     font-weight: 600;
 }
 
-/* Diagram & Mermaid Styling */
+/* Architecture Visual */
 .diagram-container {
     margin: 2rem 0;
-    padding: 1.5rem;
-    background: var(--bg-secondary);
-    border: 1px solid var(--border);
-    border-radius: 12px;
-    overflow-x: auto;
-}
-
-.diagram-title {
-    font-size: 0.85rem;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 1px;
-    color: var(--accent);
-    margin-bottom: 1rem;
-    padding-bottom: 0.75rem;
-    border-bottom: 1px solid var(--border);
-}
-
-.diagram-container .mermaid {
-    display: flex;
-    justify-content: center;
-    background: transparent;
-    border: none;
-    padding: 0;
-    margin: 0;
-}
-
-.diagram-container .mermaid svg {
-    max-width: 100%;
-    height: auto;
-}
-
-/* Mermaid overrides for dark/light theme */
-.mermaid .node rect,
-.mermaid .node polygon,
-.mermaid .node circle {
-    stroke-width: 2px;
-}
-
-.mermaid .edgeLabel {
-    background-color: var(--bg-secondary) !important;
-}
-
-.mermaid .cluster rect {
-    fill: var(--bg-tertiary) !important;
-    stroke: var(--border) !important;
-}
-
-[data-theme="light"] .mermaid .cluster rect {
-    fill: var(--bg-secondary) !important;
 }
 
 .architecture-visual {
