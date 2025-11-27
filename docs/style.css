@@ -422,9 +422,41 @@ tr:last-child td {
     font-weight: 600;
 }
 
-/* Architecture Visual */
+/* Architecture Visual & Mermaid Diagrams */
 .diagram-container {
     margin: 2rem 0;
+    padding: 1.5rem;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow-x: auto;
+}
+
+.diagram-container .mermaid {
+    display: flex;
+    justify-content: center;
+    background: transparent;
+}
+
+.diagram-container .mermaid svg {
+    max-width: 100%;
+    height: auto;
+}
+
+/* Mermaid theme adjustments */
+.mermaid .node rect,
+.mermaid .node circle,
+.mermaid .node polygon {
+    stroke-width: 2px;
+}
+
+.mermaid .edgePath .path {
+    stroke-width: 2px;
+}
+
+.mermaid .cluster rect {
+    rx: 8px;
+    ry: 8px;
 }
 
 .architecture-visual {
