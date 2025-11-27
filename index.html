@@ -420,8 +420,92 @@ chrome.runtime.sendMessage("eeijfnjmjelapkebgockoeaadonbchdd", {
 &lt;/html&gt;</code></pre>
             </section>
 
+            <section id="root-causes">
+                <h2>Part 7: Root Causes</h2>
+                <p>Three separate issues combined to create this vulnerability:</p>
+
+                <div class="root-causes">
+                    <div class="root-cause">
+                        <div class="cause-header">
+                            <span class="cause-num">1</span>
+                            <h4>Overly Permissive External Messaging</h4>
+                        </div>
+                        <div class="cause-code">
+                            <code>externally_connectable: matches: ['&lt;all_urls&gt;']</code>
+                        </div>
+                        <div class="cause-fix">
+                            <strong>Fix:</strong> Restrict to specific trusted domains or remove
+                        </div>
+                    </div>
+                    <div class="root-cause">
+                        <div class="cause-header">
+                            <span class="cause-num">2</span>
+                            <h4>Missing Sender Validation</h4>
+                        </div>
+                        <div class="cause-code">
+                            <code>function qh(message, sender) { /* sender never checked! */ }</code>
+                        </div>
+                        <div class="cause-fix">
+                            <strong>Fix:</strong> Verify sender is trusted offscreen document
+                        </div>
+                    </div>
+                    <div class="root-cause">
+                        <div class="cause-header">
+                            <span class="cause-num">3</span>
+                            <h4>No Path Sanitization</h4>
+                        </div>
+                        <div class="cause-code">
+                            <code>path = base + user_L + user_filename // Direct concatenation!</code>
+                        </div>
+                        <div class="cause-fix">
+                            <strong>Fix:</strong> Canonicalize path, verify stays within bounds
+                        </div>
+                    </div>
+                </div>
+
+                <p>Any one of these issues being addressed would have prevented exploitation.</p>
+            </section>
+
+            <section id="fix">
+                <h2>Part 8: The Fix</h2>
+                <p>Google addressed the vulnerability in version 1.11.3 by adding proper sender validation:</p>
+
+                <pre><code class="language-javascript">function isAuthorizedSender(sender) {
+  return (
+    sender.url?.includes("/static/offscreen.html") &&
+    sender.id === chrome.runtime.id &&
+    !sender.tab
+  );
+}
+
+// In SaveScreenRecording handler:
+if (!isAuthorizedSender(sender)) {
+  return { error: "Unauthorized" };
+}</code></pre>
+
+                <div class="fix-validation">
+                    <h4>New Validation Logic</h4>
+                    <div class="validation-checks">
+                        <div class="check">
+                            <span class="check-icon">&#10003;</span>
+                            <span>sender.url includes '/static/offscreen.html'?</span>
+                        </div>
+                        <div class="check">
+                            <span class="check-icon">&#10003;</span>
+                            <span>sender.id === chrome.runtime.id?</span>
+                        </div>
+                        <div class="check">
+                            <span class="check-icon">&#10003;</span>
+                            <span>!sender.tab? (not from web page)</span>
+                        </div>
+                    </div>
+                </div>
+
+                <p>Now only the legitimate offscreen document within the extension itself can trigger file saves.</p>
+            </section>
+
             <section id="lessons">
-                <h2>Part 7: Lessons Learned</h2>
+                <h2>Part 9: Lessons Learned</h2>
                 <p>This vulnerability illustrates a broader pattern emerging in AI-powered tools.</p>
 
                 <div class="lessons-grid">
@@ -456,7 +540,7 @@ chrome.runtime.sendMessage("eeijfnjmjelapkebgockoeaadonbchdd", {
             </section>
 
             <section id="bigger-picture">
-                <h2>Part 8: The Bigger Picture</h2>
+                <h2>Part 10: The Bigger Picture</h2>
                 <p>MCP (Model Context Protocol) servers aren't just tool providers anymore—they're agent coordinators.</p>
 
                 <div class="perspective-box">
