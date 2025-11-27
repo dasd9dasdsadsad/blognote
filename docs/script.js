@@ -1,17 +1,22 @@
-// Initialize highlight.js
+// Initialize
 document.addEventListener('DOMContentLoaded', () => {
-    hljs.highlightAll();
+    // Only init highlight.js if available
+    if (typeof hljs !== 'undefined') {
+        hljs.highlightAll();
+    }
     initProgressBar();
     initTableOfContents();
     initThemeToggle();
     initBackToTop();
     initSmoothScroll();
     initCodeCopy();
+    initScrollIndicator();
 });
 
 // Reading Progress Bar
 function initProgressBar() {
     const progressBar = document.getElementById('progressBar');
+    if (!progressBar) return;
 
     window.addEventListener('scroll', () => {
         const windowHeight = window.innerHeight;
@@ -69,20 +74,23 @@ function initTableOfContents() {
 // Theme Toggle
 function initThemeToggle() {
     const toggle = document.getElementById('themeToggle');
+    if (!toggle) return;
+
     const html = document.documentElement;
 
     // Check for saved preference or system preference
     const savedTheme = localStorage.getItem('theme');
     const systemDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
 
+    // Always set theme explicitly
     if (savedTheme) {
         html.dataset.theme = savedTheme;
-    } else if (!systemDark) {
-        html.dataset.theme = 'light';
+    } else {
+        html.dataset.theme = systemDark ? 'dark' : 'light';
     }
 
     toggle.addEventListener('click', () => {
-        const currentTheme = html.dataset.theme;
+        const currentTheme = html.dataset.theme || 'dark';
         const newTheme = currentTheme === 'light' ? 'dark' : 'light';
 
         html.dataset.theme = newTheme;
@@ -113,6 +121,7 @@ function initThemeToggle() {
 // Back to Top Button
 function initBackToTop() {
     const button = document.getElementById('backToTop');
+    if (!button) return;
 
     window.addEventListener('scroll', () => {
         if (window.scrollY > 500) {
@@ -130,6 +139,27 @@ function initBackToTop() {
     });
 }
 
+// Scroll Indicator (homepage)
+function initScrollIndicator() {
+    const scrollIndicator = document.querySelector('.scroll-indicator');
+    if (!scrollIndicator) return;
+
+    window.addEventListener('scroll', () => {
+        const scrolled = window.scrollY;
+        const fadeStart = 100;
+        const fadeEnd = 300;
+
+        if (scrolled <= fadeStart) {
+            scrollIndicator.style.opacity = '1';
+        } else if (scrolled >= fadeEnd) {
+            scrollIndicator.style.opacity = '0';
+        } else {
+            const opacity = 1 - (scrolled - fadeStart) / (fadeEnd - fadeStart);
+            scrollIndicator.style.opacity = opacity.toString();
+        }
+    });
+}
+
 // Smooth Scroll for anchor links
 function initSmoothScroll() {
     document.querySelectorAll('a[href^="#"]').forEach(anchor => {
@@ -141,7 +171,8 @@ function initSmoothScroll() {
             const target = document.querySelector(href);
 
             if (target) {
-                const navHeight = document.querySelector('.navbar').offsetHeight;
+                const navbar = document.querySelector('.navbar');
+                const navHeight = navbar ? navbar.offsetHeight : 60;
                 const targetPosition = target.getBoundingClientRect().top + window.scrollY - navHeight - 20;
 
                 window.scrollTo({
