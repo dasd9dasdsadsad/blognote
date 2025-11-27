@@ -424,23 +424,115 @@ tr:last-child td {
 
 /* Architecture Visual & Mermaid Diagrams */
 .diagram-container {
+    position: relative;
     margin: 2rem 0;
     padding: 1.5rem;
     background: var(--bg-secondary);
     border: 1px solid var(--border);
     border-radius: 12px;
-    overflow-x: auto;
+    overflow: hidden;
+}
+
+/* Diagram Controls */
+.diagram-controls {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid var(--border);
+}
+
+.diagram-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    padding: 0;
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.diagram-btn:hover {
+    background: var(--primary);
+    border-color: var(--primary);
+    color: #fff;
+    transform: translateY(-1px);
+}
+
+.diagram-btn:active {
+    transform: translateY(0);
+}
+
+.diagram-btn svg {
+    width: 18px;
+    height: 18px;
+}
+
+/* Zoom Wrapper */
+.diagram-zoom-wrapper {
+    position: relative;
+    width: 100%;
+    min-height: 300px;
+    max-height: 600px;
+    overflow: hidden;
+    border-radius: 8px;
+    background: var(--bg-tertiary);
+    cursor: grab;
+}
+
+.diagram-zoom-wrapper:active {
+    cursor: grabbing;
 }
 
 .diagram-container .mermaid {
     display: flex;
     justify-content: center;
+    align-items: center;
     background: transparent;
+    min-height: 250px;
 }
 
 .diagram-container .mermaid svg {
-    max-width: 100%;
+    max-width: none;
     height: auto;
+}
+
+/* Fullscreen Mode */
+.diagram-fullscreen {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 9999;
+    margin: 0;
+    padding: 1.5rem;
+    border-radius: 0;
+    background: var(--bg-primary);
+}
+
+.diagram-fullscreen .diagram-zoom-wrapper {
+    max-height: calc(100vh - 100px);
+    height: calc(100vh - 100px);
+}
+
+.diagram-fullscreen .fullscreen-btn svg {
+    transform: rotate(180deg);
+}
+
+/* Diagram Error */
+.diagram-error {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 200px;
+    color: var(--danger);
+    font-weight: 500;
 }
 
 /* Mermaid theme adjustments */
@@ -457,6 +549,90 @@ tr:last-child td {
 .mermaid .cluster rect {
     rx: 8px;
     ry: 8px;
+}
+
+/* Mermaid SVG enhancements */
+.mermaid svg {
+    font-family: inherit;
+}
+
+.mermaid .label {
+    font-family: inherit;
+}
+
+.mermaid .nodeLabel {
+    font-size: 14px;
+}
+
+.mermaid .edgeLabel {
+    font-size: 12px;
+}
+
+/* Sequence diagram enhancements */
+.mermaid .actor {
+    stroke-width: 2px;
+}
+
+.mermaid .messageLine0,
+.mermaid .messageLine1 {
+    stroke-width: 1.5px;
+}
+
+.mermaid .messageText {
+    font-size: 13px;
+}
+
+.mermaid .activation0,
+.mermaid .activation1,
+.mermaid .activation2 {
+    stroke-width: 1.5px;
+}
+
+/* State diagram enhancements */
+.mermaid .statediagram-state rect {
+    rx: 8px;
+    ry: 8px;
+}
+
+/* Flowchart node hover effect */
+.mermaid .node:hover rect,
+.mermaid .node:hover circle,
+.mermaid .node:hover polygon {
+    filter: brightness(1.1);
+}
+
+/* Special node colors - override mermaid inline styles */
+.mermaid .node[style*="fill:#ff6b6b"],
+.mermaid .node[style*="fill: rgb(255, 107, 107)"] {
+    filter: drop-shadow(0 0 8px rgba(255, 107, 107, 0.4));
+}
+
+.mermaid .node[style*="fill:#3fb950"],
+.mermaid .node[style*="fill: rgb(63, 185, 80)"] {
+    filter: drop-shadow(0 0 8px rgba(63, 185, 80, 0.4));
+}
+
+.mermaid .node[style*="fill:#58a6ff"],
+.mermaid .node[style*="fill: rgb(88, 166, 255)"] {
+    filter: drop-shadow(0 0 8px rgba(88, 166, 255, 0.4));
+}
+
+.mermaid .node[style*="fill:#ffa94d"],
+.mermaid .node[style*="fill: rgb(255, 169, 77)"] {
+    filter: drop-shadow(0 0 8px rgba(255, 169, 77, 0.4));
+}
+
+/* Light theme adjustments for diagrams */
+[data-theme="light"] .diagram-zoom-wrapper {
+    background: #f6f8fa;
+}
+
+[data-theme="light"] .diagram-btn {
+    background: #ffffff;
+}
+
+[data-theme="light"] .diagram-btn:hover {
+    background: var(--primary);
 }
 
 .architecture-visual {
