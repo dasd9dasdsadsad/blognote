@@ -116,7 +116,7 @@ videos to the artifacts directory.</code></pre>
                 </div>
 
                 <h3>Cracking the Binary</h3>
-                <p>The Language Server was a compiled binary, which usually means a dead end. But the <code>strings</code> command revealed a goldmine:</p>
+                <p>The Language Server was a compiled Go binary—no source code to read. But Go binaries retain debug strings, and the <code>strings</code> command revealed handler filenames:</p>
                 <pre><code class="language-bash">$ strings language_server_macos_arm | grep -i "cortex/handlers" | head -10
 third_party/jetski/cortex/handlers/browser_subagent_handler.go
 third_party/jetski/cortex/handlers/browser_click_element_handler.go
@@ -124,10 +124,10 @@ third_party/jetski/cortex/handlers/browser_press_key_handler.go
 third_party/jetski/cortex/handlers/browser_scroll_handler.go
 third_party/jetski/cortex/handlers/capture_browser_screenshot_handler.go
 third_party/jetski/cortex/handlers/read_browser_page_handler.go</code></pre>
-                <p>A collection of granular handlers. The <code>browser_subagent_handler.go</code> is the brain, while others handle specific motor functions like clicking elements, scrolling, and capturing screenshots.</p>
+                <p>No source code, but the filenames were enough. Combined with Antigravity's documentation, I could infer the tool structure: <code>browser_subagent_handler.go</code> orchestrates automation, while other handlers manage specific actions.</p>
 
-                <h3>The Six-Layer Architecture</h3>
-                <p>Putting it all together, here is the complete system:</p>
+                <h3>The Architecture</h3>
+                <p>Putting it all together:</p>
                 <pre><code class="language-plaintext">┌─────────────────────────────────────────────────────────┐
 │  Antigravity IDE (VS Code Fork)                         │
 └─────────────────────┬───────────────────────────────────┘
@@ -521,17 +521,16 @@ if (!isAuthorizedSender(sender)) {
                     <div class="perspective sophisticated">
                         <h4>Sophisticated Architecture</h4>
                         <ul>
-                            <li>Sub-agent pattern for browser automation</li>
-                            <li>Template-based prompt system</li>
-                            <li>ToolConverters for type-safe tool calls</li>
-                            <li>Cortex state machine for operation tracking</li>
+                            <li>Multi-layer agent orchestration</li>
+                            <li>gRPC-Web with CSRF protection</li>
+                            <li>Sandboxed browser automation</li>
                         </ul>
                     </div>
                     <div class="perspective-arrow">→</div>
                     <div class="perspective reality">
                         <h4>But Reality...</h4>
                         <ul>
-                            <li>Single missing check</li>
+                            <li>Single missing sender check</li>
                             <li>Zero clicks required</li>
                             <li class="danger">Full system compromise</li>
                         </ul>
