@@ -568,6 +568,72 @@ tr:last-child td {
     font-size: 12px;
 }
 
+/* CRITICAL: Force text colors in dark mode */
+.mermaid text,
+.mermaid .label,
+.mermaid .nodeLabel,
+.mermaid .edgeLabel,
+.mermaid .cluster-label,
+.mermaid tspan {
+    fill: #e6edf3 !important;
+}
+
+.mermaid .flowchart-link {
+    stroke: #8b949e !important;
+}
+
+.mermaid .marker {
+    fill: #8b949e !important;
+    stroke: #8b949e !important;
+}
+
+/* Subgraph/cluster title text */
+.mermaid .cluster-label text,
+.mermaid .cluster-label tspan,
+.mermaid g.cluster text {
+    fill: #ffffff !important;
+    font-weight: 600;
+}
+
+/* Node label text */
+.mermaid .node .label text,
+.mermaid .node .label tspan,
+.mermaid .node foreignObject div {
+    fill: #ffffff !important;
+    color: #ffffff !important;
+}
+
+/* Sequence diagram text */
+.mermaid .actor text,
+.mermaid .actor tspan {
+    fill: #ffffff !important;
+}
+
+.mermaid .messageText,
+.mermaid .sequenceNumber {
+    fill: #e6edf3 !important;
+}
+
+.mermaid .loopText text,
+.mermaid .loopText tspan {
+    fill: #e6edf3 !important;
+}
+
+.mermaid .note text,
+.mermaid .noteText {
+    fill: #e6edf3 !important;
+}
+
+/* State diagram text */
+.mermaid .statediagram-state .state-title,
+.mermaid .statediagram-state text {
+    fill: #ffffff !important;
+}
+
+.mermaid .state-note text {
+    fill: #e6edf3 !important;
+}
+
 /* Sequence diagram enhancements */
 .mermaid .actor {
     stroke-width: 2px;
@@ -633,6 +699,38 @@ tr:last-child td {
 
 [data-theme="light"] .diagram-btn:hover {
     background: var(--primary);
+}
+
+/* Light theme text colors */
+[data-theme="light"] .mermaid text,
+[data-theme="light"] .mermaid .label,
+[data-theme="light"] .mermaid .nodeLabel,
+[data-theme="light"] .mermaid .edgeLabel,
+[data-theme="light"] .mermaid .cluster-label,
+[data-theme="light"] .mermaid tspan {
+    fill: #1f2328 !important;
+}
+
+[data-theme="light"] .mermaid .cluster-label text,
+[data-theme="light"] .mermaid .cluster-label tspan,
+[data-theme="light"] .mermaid g.cluster text {
+    fill: #1f2328 !important;
+}
+
+[data-theme="light"] .mermaid .node .label text,
+[data-theme="light"] .mermaid .node .label tspan,
+[data-theme="light"] .mermaid .node foreignObject div {
+    fill: #1f2328 !important;
+    color: #1f2328 !important;
+}
+
+[data-theme="light"] .mermaid .flowchart-link {
+    stroke: #656d76 !important;
+}
+
+[data-theme="light"] .mermaid .marker {
+    fill: #656d76 !important;
+    stroke: #656d76 !important;
 }
 
 .architecture-visual {

@@ -20,9 +20,9 @@
             return {
                 theme: 'base',
                 themeVariables: isDark ? {
-                    // Dark theme colors
+                    // Dark theme colors - high contrast
                     primaryColor: '#238636',
-                    primaryTextColor: '#e6edf3',
+                    primaryTextColor: '#ffffff',
                     primaryBorderColor: '#3fb950',
                     lineColor: '#8b949e',
                     secondaryColor: '#21262d',
@@ -32,30 +32,32 @@
                     nodeBorder: '#3fb950',
                     clusterBkg: '#161b22',
                     clusterBorder: '#30363d',
-                    titleColor: '#e6edf3',
+                    titleColor: '#ffffff',
                     edgeLabelBackground: '#21262d',
-                    nodeTextColor: '#e6edf3',
-                    actorTextColor: '#e6edf3',
+                    // Text colors - ensure white text
+                    textColor: '#ffffff',
+                    nodeTextColor: '#ffffff',
+                    actorTextColor: '#ffffff',
                     actorBkg: '#21262d',
                     actorBorder: '#3fb950',
-                    signalColor: '#e6edf3',
-                    signalTextColor: '#e6edf3',
+                    signalColor: '#ffffff',
+                    signalTextColor: '#ffffff',
                     labelBoxBkgColor: '#21262d',
                     labelBoxBorderColor: '#30363d',
-                    labelTextColor: '#e6edf3',
-                    loopTextColor: '#e6edf3',
-                    noteBkgColor: '#161b22',
-                    noteTextColor: '#e6edf3',
+                    labelTextColor: '#ffffff',
+                    loopTextColor: '#ffffff',
+                    noteBkgColor: '#21262d',
+                    noteTextColor: '#ffffff',
                     noteBorderColor: '#58a6ff',
                     activationBkgColor: '#21262d',
                     activationBorderColor: '#3fb950',
-                    sequenceNumberColor: '#0d1117',
+                    sequenceNumberColor: '#ffffff',
                     sectionBkgColor: '#21262d',
                     altSectionBkgColor: '#161b22',
                     sectionBkgColor2: '#21262d',
                     taskBkgColor: '#238636',
-                    taskTextColor: '#e6edf3',
-                    taskTextLightColor: '#e6edf3',
+                    taskTextColor: '#ffffff',
+                    taskTextLightColor: '#ffffff',
                     taskBorderColor: '#3fb950',
                     gridColor: '#30363d',
                     doneTaskBkgColor: '#238636',
@@ -63,10 +65,15 @@
                     critBkgColor: '#f85149',
                     critBorderColor: '#f85149',
                     todayLineColor: '#58a6ff',
+                    // State diagram
                     stateBkg: '#21262d',
                     stateBorder: '#3fb950',
+                    stateTextColor: '#ffffff',
                     transitionColor: '#8b949e',
-                    transitionLabelColor: '#e6edf3'
+                    transitionLabelColor: '#ffffff',
+                    // Flowchart specific
+                    flowchartTitleColor: '#ffffff',
+                    subGraphTitleColor: '#ffffff'
                 } : {
                     // Light theme colors
                     primaryColor: '#2da44e',
@@ -82,6 +89,7 @@
                     clusterBorder: '#d0d7de',
                     titleColor: '#1f2328',
                     edgeLabelBackground: '#f6f8fa',
+                    textColor: '#1f2328',
                     nodeTextColor: '#1f2328',
                     actorTextColor: '#1f2328',
                     actorBkg: '#f6f8fa',
@@ -100,8 +108,11 @@
                     sequenceNumberColor: '#ffffff',
                     stateBkg: '#f6f8fa',
                     stateBorder: '#2da44e',
+                    stateTextColor: '#1f2328',
                     transitionColor: '#656d76',
-                    transitionLabelColor: '#1f2328'
+                    transitionLabelColor: '#1f2328',
+                    flowchartTitleColor: '#1f2328',
+                    subGraphTitleColor: '#1f2328'
                 }
             };
         }
@@ -133,8 +144,14 @@
 
             for (let i = 0; i < diagrams.length; i++) {
                 const diagram = diagrams[i];
-                const code = diagram.textContent;
-                const id = `mermaid-diagram-${i}`;
+                const code = diagram.textContent || diagram.getAttribute('data-diagram-code');
+
+                // Store original code for re-renders
+                if (!diagram.getAttribute('data-diagram-code')) {
+                    diagram.setAttribute('data-diagram-code', code);
+                }
+
+                const id = `mermaid-diagram-${i}-${Date.now()}`;
 
                 try {
                     const { svg } = await mermaid.render(id, code);
@@ -159,15 +176,18 @@
                                     <path d="M21 21l-4.35-4.35M8 11h6"></path>
                                 </svg>
                             </button>
-                            <button class="diagram-btn zoom-reset" title="Reset">
+                            <button class="diagram-btn zoom-reset" title="Reset View">
                                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                     <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path>
                                     <path d="M3 3v5h5"></path>
                                 </svg>
                             </button>
-                            <button class="diagram-btn fullscreen-btn" title="Fullscreen">
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <button class="diagram-btn fullscreen-btn" title="Toggle Fullscreen">
+                                <svg class="expand-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                     <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path>
+                                </svg>
+                                <svg class="collapse-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display:none">
+                                    <path d="M4 14h6v6m10-10h-6V4m0 6l7-7M3 21l7-7"></path>
                                 </svg>
                             </button>
                         `;
@@ -195,36 +215,90 @@
                             container.panzoomInstance = pz;
 
                             // Control button handlers
-                            controls.querySelector('.zoom-in').addEventListener('click', () => {
+                            controls.querySelector('.zoom-in').addEventListener('click', (e) => {
+                                e.stopPropagation();
                                 pz.smoothZoom(svgElement.clientWidth / 2, svgElement.clientHeight / 2, 1.5);
                             });
-                            controls.querySelector('.zoom-out').addEventListener('click', () => {
+                            controls.querySelector('.zoom-out').addEventListener('click', (e) => {
+                                e.stopPropagation();
                                 pz.smoothZoom(svgElement.clientWidth / 2, svgElement.clientHeight / 2, 0.67);
                             });
-                            controls.querySelector('.zoom-reset').addEventListener('click', () => {
+                            controls.querySelector('.zoom-reset').addEventListener('click', (e) => {
+                                e.stopPropagation();
                                 pz.moveTo(0, 0);
                                 pz.zoomAbs(0, 0, 1);
                             });
-                            controls.querySelector('.fullscreen-btn').addEventListener('click', () => {
-                                container.classList.toggle('diagram-fullscreen');
-                                if (container.classList.contains('diagram-fullscreen')) {
+
+                            // Fullscreen toggle function
+                            const toggleFullscreen = (e) => {
+                                if (e) e.stopPropagation();
+                                const isFullscreen = container.classList.toggle('diagram-fullscreen');
+                                const expandIcon = controls.querySelector('.expand-icon');
+                                const collapseIcon = controls.querySelector('.collapse-icon');
+
+                                if (isFullscreen) {
                                     document.body.style.overflow = 'hidden';
+                                    expandIcon.style.display = 'none';
+                                    collapseIcon.style.display = 'block';
                                 } else {
                                     document.body.style.overflow = '';
+                                    expandIcon.style.display = 'block';
+                                    collapseIcon.style.display = 'none';
                                 }
-                                setTimeout(() => pz.zoomAbs(0, 0, 1), 100);
-                            });
+                                setTimeout(() => {
+                                    pz.moveTo(0, 0);
+                                    pz.zoomAbs(0, 0, 1);
+                                }, 100);
+                            };
+
+                            controls.querySelector('.fullscreen-btn').addEventListener('click', toggleFullscreen);
+
+                            // ESC key to exit fullscreen
+                            container.exitFullscreen = () => {
+                                if (container.classList.contains('diagram-fullscreen')) {
+                                    toggleFullscreen();
+                                }
+                            };
                         }
                     }
                 } catch (error) {
                     console.error('Mermaid render error:', error);
-                    diagram.innerHTML = `<div class="diagram-error">Error rendering diagram</div>`;
+                    diagram.innerHTML = `<div class="diagram-error">Error rendering diagram: ${error.message}</div>`;
                 }
             }
         }
 
+        // Global ESC key handler for fullscreen
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                const fullscreenContainer = document.querySelector('.diagram-fullscreen');
+                if (fullscreenContainer && fullscreenContainer.exitFullscreen) {
+                    fullscreenContainer.exitFullscreen();
+                }
+            }
+        });
+
         // Re-render diagrams on theme change
         function updateDiagramTheme() {
+            // Remove old controls and wrappers before re-render
+            document.querySelectorAll('.diagram-container').forEach(container => {
+                const controls = container.querySelector('.diagram-controls');
+                const wrapper = container.querySelector('.diagram-zoom-wrapper');
+                const mermaidEl = container.querySelector('.mermaid');
+
+                if (controls) controls.remove();
+                if (wrapper && mermaidEl) {
+                    wrapper.parentNode.insertBefore(mermaidEl, wrapper);
+                    wrapper.remove();
+                }
+
+                // Dispose panzoom instance
+                if (container.panzoomInstance) {
+                    container.panzoomInstance.dispose();
+                    container.panzoomInstance = null;
+                }
+            });
+
             const config = getMermaidTheme();
             mermaid.initialize({
                 ...config,
