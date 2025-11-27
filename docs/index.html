@@ -5,8 +5,38 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Zero-Click RCE in Google DeepMind's Antigravity</title>
     <meta name="description" content="Any website you visit could silently write files anywhere on your system. A critical vulnerability analysis.">
+    <meta name="author" content="Security Research">
+    <meta property="og:title" content="Zero-Click RCE in Google DeepMind's Antigravity">
+    <meta property="og:description" content="Any website you visit could silently write files anywhere on your system.">
+    <meta property="og:type" content="article">
     <link rel="stylesheet" href="style.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+    <script>
+        mermaid.initialize({
+            startOnLoad: true,
+            theme: 'dark',
+            themeVariables: {
+                primaryColor: '#58a6ff',
+                primaryTextColor: '#e6edf3',
+                primaryBorderColor: '#30363d',
+                lineColor: '#8b949e',
+                secondaryColor: '#21262d',
+                tertiaryColor: '#161b22',
+                background: '#0d1117',
+                mainBkg: '#161b22',
+                nodeBorder: '#30363d',
+                clusterBkg: '#21262d',
+                titleColor: '#e6edf3',
+                edgeLabelBackground: '#161b22'
+            },
+            flowchart: {
+                curve: 'basis',
+                padding: 20
+            },
+            securityLevel: 'loose'
+        });
+    </script>
 </head>
 <body>
     <div class="progress-bar" id="progressBar"></div>
@@ -129,45 +159,49 @@ third_party/jetski/cortex/handlers/read_browser_page_handler.go</code></pre>
                 <h3>The Six-Layer Architecture</h3>
                 <p>Putting it all together, here is the complete system:</p>
                 <div class="diagram-container">
-                    <div class="mermaid-placeholder" data-diagram="architecture">
-                        <div class="architecture-visual">
-                            <div class="layer layer-1">
-                                <span class="layer-num">L1</span>
-                                <span class="layer-name">User Interface</span>
-                                <span class="layer-detail">Antigravity IDE (VS Code Fork)</span>
-                            </div>
-                            <div class="arrow-down"></div>
-                            <div class="layer layer-2">
-                                <span class="layer-num">L2</span>
-                                <span class="layer-name">AI Inference</span>
-                                <span class="layer-detail">Jetski Server + Gemini Model</span>
-                            </div>
-                            <div class="arrow-down"></div>
-                            <div class="layer layer-3">
-                                <span class="layer-num">L3</span>
-                                <span class="layer-name">Language Server (Cortex)</span>
-                                <span class="layer-detail">gRPC-Web + CSRF + File System</span>
-                            </div>
-                            <div class="arrow-down"></div>
-                            <div class="layer layer-4">
-                                <span class="layer-num">L4</span>
-                                <span class="layer-name">MCP Server</span>
-                                <span class="layer-detail">@agentdeskai/browser-tools-mcp</span>
-                            </div>
-                            <div class="arrow-down"></div>
-                            <div class="layer layer-5 vulnerable">
-                                <span class="layer-num">L5</span>
-                                <span class="layer-name">Browser Extension</span>
-                                <span class="layer-detail warning">externally_connectable: &lt;all_urls&gt;</span>
-                            </div>
-                            <div class="arrow-down"></div>
-                            <div class="layer layer-6">
-                                <span class="layer-num">L6</span>
-                                <span class="layer-name">Chrome Browser (CDP)</span>
-                                <span class="layer-detail">Port 9222 - DevTools Protocol</span>
-                            </div>
-                        </div>
-                    </div>
+                    <pre class="mermaid">
+flowchart TB
+    subgraph L1["Layer 1: User Interface"]
+        IDE["🖥️ Antigravity IDE<br/>(VS Code Fork)"]
+        User["👤 User Request"]
+    end
+
+    subgraph L2["Layer 2: AI Inference"]
+        Jetski["🌐 Jetski Server<br/>(jetski-server.corp.goog)"]
+        Gemini["🤖 Gemini Model"]
+    end
+
+    subgraph L3["Layer 3: Language Server"]
+        LS["⚙️ Cortex Language Server"]
+        LSFeatures["Port 53410: gRPC-Web + CSRF<br/>File System Access"]
+    end
+
+    subgraph L4["Layer 4: MCP Server"]
+        MCP["📡 browser-tools-mcp<br/>HTTP Command Translation"]
+    end
+
+    subgraph L5["Layer 5: Browser Extension"]
+        SW["🔌 Service Worker"]
+        Vuln["⚠️ externally_connectable<br/>matches: all_urls"]
+    end
+
+    subgraph L6["Layer 6: Chrome Browser"]
+        Chrome["🌍 Chrome + CDP<br/>Port 9222"]
+    end
+
+    User --> IDE
+    IDE --> Jetski
+    Jetski --> Gemini
+    Gemini --> LS
+    LS --> LSFeatures
+    LSFeatures --> MCP
+    MCP --> SW
+    SW --> Vuln
+    SW --> Chrome
+
+    style Vuln fill:#f85149,color:#fff,stroke:#f85149
+    style L5 fill:#2d1b1b,stroke:#f85149
+                    </pre>
                 </div>
 
                 <h3>The Complete Tool Arsenal</h3>
@@ -273,31 +307,38 @@ third_party/jetski/cortex/handlers/read_browser_page_handler.go</code></pre>
                     <strong>Critical Issue:</strong> The handler never validates who sent the message.
                 </div>
 
-                <div class="comparison-box">
-                    <div class="comparison-item expected">
-                        <h4>Expected Flow</h4>
-                        <div class="flow">
-                            <span class="node safe">Offscreen Document (Trusted)</span>
-                            <span class="arrow">→</span>
-                            <span class="node safe">Service Worker (Validates)</span>
-                            <span class="arrow">→</span>
-                            <span class="node">Language Server</span>
-                            <span class="arrow">→</span>
-                            <span class="node">Disk</span>
-                        </div>
-                    </div>
-                    <div class="comparison-item actual">
-                        <h4>Actual Flow</h4>
-                        <div class="flow">
-                            <span class="node danger">Any Website (Untrusted)</span>
-                            <span class="arrow">→</span>
-                            <span class="node warning">Service Worker (No validation!)</span>
-                            <span class="arrow">→</span>
-                            <span class="node">Language Server</span>
-                            <span class="arrow">→</span>
-                            <span class="node danger">Disk</span>
-                        </div>
-                    </div>
+                <div class="diagram-container">
+                    <div class="diagram-title">Expected vs Actual Flow</div>
+                    <pre class="mermaid">
+flowchart LR
+    subgraph Expected["✅ Expected Flow"]
+        direction LR
+        E1["🔒 Offscreen Doc<br/>(Trusted)"]
+        E2["✓ Service Worker<br/>(Validates)"]
+        E3["Language Server"]
+        E4["💾 Disk"]
+        E1 -->|"Internal"| E2
+        E2 -->|"Verified"| E3
+        E3 --> E4
+    end
+
+    subgraph Actual["❌ Actual Flow"]
+        direction LR
+        A1["🌐 Any Website<br/>(Untrusted)"]
+        A2["⚠️ Service Worker<br/>(No validation!)"]
+        A3["Language Server"]
+        A4["💾 Disk"]
+        A1 -->|"External"| A2
+        A2 -->|"Unverified"| A3
+        A3 --> A4
+    end
+
+    style E1 fill:#3fb950,stroke:#3fb950,color:#fff
+    style E2 fill:#3fb950,stroke:#3fb950,color:#fff
+    style A1 fill:#f85149,stroke:#f85149,color:#fff
+    style A2 fill:#d29922,stroke:#d29922,color:#fff
+    style A4 fill:#f85149,stroke:#f85149,color:#fff
+                    </pre>
                 </div>
 
                 <p>The handler code (deobfuscated):</p>
@@ -355,36 +396,30 @@ third_party/jetski/cortex/handlers/read_browser_page_handler.go</code></pre>
                 <h2>Part 6: Achieving Code Execution</h2>
                 <p>With arbitrary file write established, achieving code execution is straightforward on Windows. The Startup folder is a well-known persistence mechanism—any executable or script placed there runs automatically when the user logs in.</p>
 
-                <div class="attack-chain">
-                    <div class="chain-step">
-                        <span class="step-num">1</span>
-                        <span class="step-title">Victim visits malicious page</span>
-                        <span class="step-detail">https://evil.com/cats.html</span>
-                    </div>
-                    <div class="chain-arrow"></div>
-                    <div class="chain-step">
-                        <span class="step-num">2</span>
-                        <span class="step-title">JavaScript sends message</span>
-                        <span class="step-detail">chrome.runtime.sendMessage()</span>
-                    </div>
-                    <div class="chain-arrow"></div>
-                    <div class="chain-step">
-                        <span class="step-num">3</span>
-                        <span class="step-title">Extension forwards to LS</span>
-                        <span class="step-detail">No origin validation</span>
-                    </div>
-                    <div class="chain-arrow"></div>
-                    <div class="chain-step">
-                        <span class="step-num">4</span>
-                        <span class="step-title">File written to Startup</span>
-                        <span class="step-detail">Path traversal exploit</span>
-                    </div>
-                    <div class="chain-arrow"></div>
-                    <div class="chain-step danger">
-                        <span class="step-num">5</span>
-                        <span class="step-title">Next login = RCE</span>
-                        <span class="step-detail">Attacker code executes</span>
-                    </div>
+                <div class="diagram-container">
+                    <div class="diagram-title">Attack Sequence</div>
+                    <pre class="mermaid">
+sequenceDiagram
+    autonumber
+    participant V as 👤 Victim
+    participant W as 🌐 evil.com
+    participant E as 🔌 Extension
+    participant LS as ⚙️ Language Server
+    participant FS as 💾 File System
+
+    V->>W: Visits malicious page
+    Note over W: Exploit triggers on page load
+    W->>E: chrome.runtime.sendMessage()
+    Note over E: No origin validation!
+    E->>LS: SaveScreenRecording
+    Note over LS: Path traversal: ../../../
+    LS->>FS: Write to Startup folder
+    Note over FS: malware.bat created
+
+    rect rgb(248, 81, 73, 0.2)
+        Note over V,FS: 🔴 Next Login = Code Execution
+    end
+                    </pre>
                 </div>
 
                 <p>The entire attack requires <strong>zero user interaction</strong> beyond visiting a webpage. No clicks, no downloads, no permission prompts.</p>
