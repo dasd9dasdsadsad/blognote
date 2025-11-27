@@ -390,6 +390,14 @@ third_party/jetski/cortex/handlers/read_browser_page_handler.go</code></pre>
                 <p>The entire attack requires <strong>zero user interaction</strong> beyond visiting a webpage. No clicks, no downloads, no permission prompts.</p>
 
                 <h3>Proof of Concept</h3>
+                <div class="poc-video">
+                    <a href="https://drive.google.com/file/d/1WJaPxNqA5vAFWytp9_n2yJNU4CH6YgTs/view" target="_blank" rel="noopener" class="poc-link">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="24" height="24">
+                            <polygon points="5 3 19 12 5 21 5 3"></polygon>
+                        </svg>
+                        Watch POC Video Demo
+                    </a>
+                </div>
                 <pre><code class="language-html">&lt;!DOCTYPE html&gt;
 &lt;html&gt;
 &lt;head&gt;&lt;title&gt;Cute Cat Pictures&lt;/title&gt;&lt;/head&gt;
@@ -412,117 +420,8 @@ chrome.runtime.sendMessage("eeijfnjmjelapkebgockoeaadonbchdd", {
 &lt;/html&gt;</code></pre>
             </section>
 
-            <section id="discovery">
-                <h2>Part 7: An Interesting Discovery</h2>
-                <p>While reversing the minified code, I noticed something unusual. The extension's own internal screen recording flow appeared to be broken.</p>
-
-                <div class="discovery-box">
-                    <div class="discovery-side">
-                        <h4>offscreen_binary.js Sends:</h4>
-                        <code>K: recordingBytes</code><br>
-                        <code>H: cascadeId</code>
-                    </div>
-                    <div class="discovery-mismatch">
-                        <span class="mismatch-symbol">≠</span>
-                    </div>
-                    <div class="discovery-side">
-                        <h4>service_worker_binary.js Expects:</h4>
-                        <code>za: recordingBytes</code><br>
-                        <code>L: cascadeId</code>
-                    </div>
-                </div>
-
-                <p>The minifier assigned different shortened names in each file! The legitimate internal flow may not even work correctly—but attackers only need to know which property names the service worker expects.</p>
-            </section>
-
-            <section id="additional-vectors">
-                <h2>Part 8: Additional Attack Vectors</h2>
-
-                <h3>CDP Exposure (Bonus Vulnerability)</h3>
-                <p>Beyond the RCE, Chrome runs with <code>--remote-debugging-port=9222</code>. This exposes CDP on localhost without authentication:</p>
-
-                <div class="attack-steps">
-                    <div class="attack-step">
-                        <span class="attack-num">1</span>
-                        <code>GET /json/list</code> → All targets
-                    </div>
-                    <div class="attack-step">
-                        <span class="attack-num">2</span>
-                        Find extension target → URL contains extension ID
-                    </div>
-                    <div class="attack-step">
-                        <span class="attack-num">3</span>
-                        Connect WebSocket → devtools/page/{targetId}
-                    </div>
-                    <div class="attack-step danger">
-                        <span class="attack-num">4</span>
-                        <code>Runtime.evaluate</code> → Steal CSRF token + server port
-                    </div>
-                </div>
-
-                <h3>CSRF Token in Command Line</h3>
-                <p>The Language Server is spawned with credentials visible in the process list:</p>
-                <pre><code class="language-bash">$ wmic process where "commandline like '%language_server%'" get commandline
-
-language_server_windows_x64.exe \
-  --csrf_token d0e7aead-f94f-4acb-bf36-84ed12a0e1bb \
-  --extension_server_port 58761</code></pre>
-                <p>Any process running as the same user can extract these credentials.</p>
-            </section>
-
-            <section id="impact">
-                <h2>Part 9: Impact Assessment</h2>
-
-                <div class="cvss-score">
-                    <div class="cvss-value">9.8</div>
-                    <div class="cvss-label">CRITICAL</div>
-                </div>
-
-                <div class="table-wrapper">
-                    <table class="cvss-table">
-                        <thead>
-                            <tr>
-                                <th>Metric</th>
-                                <th>Value</th>
-                                <th>Score</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <tr><td>Attack Vector</td><td>Network (any website)</td><td>AV:N</td></tr>
-                            <tr><td>Attack Complexity</td><td>Low (no special conditions)</td><td>AC:L</td></tr>
-                            <tr><td>Privileges Required</td><td>None</td><td>PR:N</td></tr>
-                            <tr><td>User Interaction</td><td>None</td><td>UI:N</td></tr>
-                            <tr><td>Scope</td><td>Changed (escapes extension)</td><td>S:C</td></tr>
-                            <tr><td>Confidentiality</td><td>High</td><td>C:H</td></tr>
-                            <tr><td>Integrity</td><td>High (arbitrary file write)</td><td>I:H</td></tr>
-                            <tr><td>Availability</td><td>High</td><td>A:H</td></tr>
-                        </tbody>
-                    </table>
-                </div>
-
-                <h3>Attack Scenarios</h3>
-                <div class="scenario-grid">
-                    <div class="scenario">
-                        <h4>Drive-by Download</h4>
-                        <p>Email link → Exploit page → Startup malware</p>
-                    </div>
-                    <div class="scenario">
-                        <h4>Malvertising</h4>
-                        <p>Ad iframe → Exploit fires → Persistence</p>
-                    </div>
-                    <div class="scenario">
-                        <h4>Watering Hole</h4>
-                        <p>Compromise target's site → Wait</p>
-                    </div>
-                    <div class="scenario">
-                        <h4>Data Exfiltration</h4>
-                        <p>Write to cloud-synced folder → Auto-exfil</p>
-                    </div>
-                </div>
-            </section>
-
             <section id="root-causes">
-                <h2>Part 10: Root Causes</h2>
+                <h2>Part 7: Root Causes</h2>
                 <p>Three separate issues combined to create this vulnerability:</p>
 
                 <div class="root-causes">
@@ -568,7 +467,7 @@ language_server_windows_x64.exe \
             </section>
 
             <section id="fix">
-                <h2>Part 11: The Fix</h2>
+                <h2>Part 8: The Fix</h2>
                 <p>Google addressed the vulnerability in version 1.11.3 by adding proper sender validation:</p>
 
                 <pre><code class="language-javascript">function isAuthorizedSender(sender) {
@@ -588,15 +487,15 @@ if (!isAuthorizedSender(sender)) {
                     <h4>New Validation Logic</h4>
                     <div class="validation-checks">
                         <div class="check">
-                            <span class="check-icon">✓</span>
+                            <span class="check-icon">&#10003;</span>
                             <span>sender.url includes '/static/offscreen.html'?</span>
                         </div>
                         <div class="check">
-                            <span class="check-icon">✓</span>
+                            <span class="check-icon">&#10003;</span>
                             <span>sender.id === chrome.runtime.id?</span>
                         </div>
                         <div class="check">
-                            <span class="check-icon">✓</span>
+                            <span class="check-icon">&#10003;</span>
                             <span>!sender.tab? (not from web page)</span>
                         </div>
                     </div>
@@ -606,7 +505,7 @@ if (!isAuthorizedSender(sender)) {
             </section>
 
             <section id="lessons">
-                <h2>Part 12: Lessons Learned</h2>
+                <h2>Part 9: Lessons Learned</h2>
                 <p>This vulnerability illustrates a broader pattern emerging in AI-powered tools.</p>
 
                 <div class="lessons-grid">
@@ -641,7 +540,7 @@ if (!isAuthorizedSender(sender)) {
             </section>
 
             <section id="bigger-picture">
-                <h2>Part 13: The Bigger Picture</h2>
+                <h2>Part 10: The Bigger Picture</h2>
                 <p>MCP (Model Context Protocol) servers aren't just tool providers anymore—they're agent coordinators.</p>
 
                 <div class="perspective-box">
