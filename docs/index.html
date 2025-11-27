@@ -65,8 +65,6 @@
             <p class="article-subtitle">Any website you visit could silently write files anywhere on your system.</p>
             <div class="article-info">
                 <time datetime="2025-11-27">November 27, 2025</time>
-                <span class="separator">|</span>
-                <span>30 min read</span>
             </div>
         </header>
 
@@ -130,35 +128,59 @@ videos to the artifacts directory.</code></pre>
                 </div>
 
                 <h3>The Six-Layer Architecture</h3>
+                <p>Through reverse engineering using <code>strings</code> and <code>grep</code> on the binary, I mapped out the complete system architecture:</p>
+                <pre><code class="language-bash"># Extract strings from the language server binary
+$ strings language_server_macos_arm > strings_output.txt
+
+# Search for tool handlers
+$ grep -i "cortex/handlers" strings_output.txt | head -10
+third_party/jetski/cortex/handlers/browser_subagent_handler.go
+third_party/jetski/cortex/handlers/browser_click_element_handler.go
+third_party/jetski/cortex/handlers/browser_press_key_handler.go
+...</code></pre>
                 <div class="diagram-container">
                     <pre class="mermaid">
 flowchart TB
-    subgraph Layer1["Layer 1: User Interface"]
-        IDE["Antigravity IDE"]
-        User["User Request"]
+    subgraph Layer1["🖥️ Layer 1: User Interface"]
+        IDE["Antigravity IDE<br/>(VS Code Fork)"]
+        User["User Request<br/>'Go to google.com'"]
     end
-    subgraph Layer2["Layer 2: AI Inference"]
-        Jetski["Jetski Server"]
-        Decision["Gemini Model"]
+    subgraph Layer2["🧠 Layer 2: AI Inference"]
+        Jetski["Jetski Server<br/>(jetski-server.corp.goog)"]
+        Decision["Gemini Model<br/>Tool Selection"]
     end
-    subgraph Layer3["Layer 3: Language Server"]
-        LS["language_server"]
-        LSFeatures["gRPC-Web + CSRF"]
+    subgraph Layer3["⚙️ Layer 3: Language Server (Cortex)"]
+        LS["language_server_macos_arm<br/>Port 53410"]
+        LSFeatures["gRPC-Web Protocol<br/>CSRF Token Required"]
+        Handlers["Tool Handlers<br/>browser_*, fs_*, search_*"]
     end
-    subgraph Layer4["Layer 4: MCP Server"]
-        MCP["browser-tools-mcp"]
+    subgraph Layer4["🔌 Layer 4: MCP Server"]
+        MCP["@anthropic/browser-tools-mcp<br/>HTTP Bridge"]
     end
-    subgraph Layer5["Layer 5: Browser Extension"]
-        SW["Service Worker"]
-        Vuln["externally_connectable: all_urls"]
+    subgraph Layer5["🔓 Layer 5: Browser Extension"]
+        SW["Service Worker<br/>(service_worker_binary.js)"]
+        Offscreen["Offscreen Document<br/>(offscreen_binary.js)"]
+        Vuln["⚠️ externally_connectable<br/>matches: all_urls"]
     end
-    subgraph Layer6["Layer 6: Chrome"]
-        Chrome["Chrome + CDP Port 9222"]
+    subgraph Layer6["🌐 Layer 6: Chrome Browser"]
+        Chrome["Chrome + CDP<br/>Port 9222"]
+        Targets["Debug Targets<br/>/json/list"]
     end
-    User --> IDE --> Jetski --> Decision --> LS
-    LS --> LSFeatures --> MCP --> SW --> Vuln
-    SW --> Chrome
-    style Vuln fill:#ff6b6b,color:#fff
+    User --> IDE
+    IDE --> Jetski
+    Jetski --> Decision
+    Decision --> LS
+    LS --> LSFeatures
+    LSFeatures --> Handlers
+    Handlers --> MCP
+    MCP --> SW
+    SW --> Offscreen
+    SW --> Vuln
+    Vuln --> Chrome
+    Chrome --> Targets
+    style Vuln fill:#ff6b6b,color:#fff,stroke:#ff6b6b
+    style Handlers fill:#58a6ff,color:#fff
+    style LSFeatures fill:#3fb950,color:#fff
                     </pre>
                 </div>
 
@@ -166,44 +188,142 @@ flowchart TB
                 <div class="diagram-container">
                     <pre class="mermaid">
 sequenceDiagram
-    participant User
-    participant IDE as Antigravity IDE
-    participant AI as Jetski Server
-    participant LS as Language Server
-    participant MCP as MCP Server
-    participant Ext as Extension
-    participant Chrome
+    autonumber
+    participant User as 👤 User
+    participant IDE as 🖥️ Antigravity IDE
+    participant AI as 🧠 Jetski/Gemini
+    participant LS as ⚙️ Language Server
+    participant MCP as 🔌 MCP Server
+    participant Ext as 🔓 Extension
+    participant Chrome as 🌐 Chrome CDP
+
     User->>IDE: "Go to google.com"
-    IDE->>AI: Inference request
-    AI->>IDE: tool_call: browser.open_url
-    IDE->>LS: Execute browser.open_url
-    LS->>MCP: HTTP command
-    MCP->>Ext: navigate request
-    Ext->>Chrome: CDP: Target.createTarget
-    Chrome-->>Ext: Page loaded
-    Ext-->>IDE: Success
+    Note over IDE: Parse user intent
+    IDE->>AI: POST /inference<br/>{"prompt": "..."}
+    Note over AI: Gemini processes<br/>selects tool
+    AI->>IDE: tool_call: browser.open_url<br/>{"Url": "https://google.com"}
+    IDE->>LS: gRPC-Web request<br/>+ CSRF token
+    Note over LS: Cortex state:<br/>CORTEX_STEP_STATUS_RUNNING
+    LS->>MCP: HTTP POST /navigate
+    MCP->>Ext: chrome.runtime.sendMessage()
+    Ext->>Chrome: CDP: Target.createTarget<br/>{"url": "https://google.com"}
+    Chrome-->>Ext: {"targetId": "..."}
+    Note over LS: State: CORTEX_STEP_STATUS_DONE
+    Ext-->>IDE: Success response
     IDE-->>User: "I opened google.com"
                     </pre>
                 </div>
 
-                <h3>The Complete Tool Arsenal</h3>
-                <div class="tool-grid">
-                    <div class="tool-category">
-                        <h4>Browser Navigation</h4>
-                        <ul><li>browser.open_url</li><li>browser.click_element</li><li>browser.press_key</li><li>browser.input</li></ul>
-                    </div>
-                    <div class="tool-category">
-                        <h4>Browser Capture</h4>
-                        <ul><li>browser.get_dom</li><li>browser.capture_screenshot</li><li>browser.execute_javascript</li></ul>
-                    </div>
-                    <div class="tool-category">
-                        <h4>File System</h4>
-                        <ul><li>fs.view_file_range</li><li>fs.list_directory</li><li>fs.write_file</li></ul>
-                    </div>
-                    <div class="tool-category">
-                        <h4>Search & Web</h4>
-                        <ul><li>search.in_file</li><li>web.search</li><li>http.read_url</li></ul>
-                    </div>
+                <h3>Cortex State Machine</h3>
+                <p>The Language Server uses a state machine called "Cortex" to manage tool execution. Extracted from the binary:</p>
+                <pre><code class="language-bash"># Extract Cortex states from binary
+$ grep "CORTEX_STEP_STATUS" strings_output.txt
+CORTEX_STEP_STATUS_UNSPECIFIED
+CORTEX_STEP_STATUS_PENDING
+CORTEX_STEP_STATUS_RUNNING
+CORTEX_STEP_STATUS_DONE
+CORTEX_STEP_STATUS_FAILED
+CORTEX_STEP_STATUS_CANCELLED</code></pre>
+                <div class="diagram-container">
+                    <pre class="mermaid">
+stateDiagram-v2
+    [*] --> UNSPECIFIED: Tool call received
+    UNSPECIFIED --> PENDING: Queued for execution
+    PENDING --> RUNNING: Handler invoked
+    RUNNING --> DONE: Success
+    RUNNING --> FAILED: Error occurred
+    RUNNING --> CANCELLED: User cancelled
+    DONE --> [*]
+    FAILED --> [*]
+    CANCELLED --> [*]
+
+    note right of RUNNING
+        Tool handlers execute here:
+        • browser_* handlers
+        • fs_* handlers
+        • terminal_* handlers
+        • SaveScreenRecording ⚠️
+    end note
+
+    note right of FAILED
+        Failures logged to:
+        third_party/jetski/cortex/
+        handlers/*_handler.go
+    end note
+                    </pre>
+                </div>
+                <div class="callout callout-info">
+                    <strong>Handler Locations:</strong> Each tool has a dedicated handler file in <code>third_party/jetski/cortex/handlers/</code>. For example, <code>browser_click_element_handler.go</code> handles click operations.
+                </div>
+
+                <h3>The Complete Tool Arsenal (27+ Tools)</h3>
+                <p>Using <code>strings</code> and <code>grep</code> on the binary revealed the complete tool registry with their JSON schemas:</p>
+                <pre><code class="language-bash"># Extract tool argument parsing
+$ grep -A 20 "ParseToolArgs" strings_output.txt
+type BrowserOpenUrlArgs struct {
+    Url string `json:"Url"`
+}
+type BrowserClickElementArgs struct {
+    Element int `json:"Element"`
+}
+type FsWriteFileArgs struct {
+    Path    string `json:"Path"`
+    Content string `json:"Content"`
+}</code></pre>
+
+                <div class="diagram-container">
+                    <pre class="mermaid">
+flowchart TB
+    subgraph BrowserTools["🌐 Browser Tools (8)"]
+        direction TB
+        BOU["browser.open_url<br/>─────────────<br/>Url: string"]
+        BCE["browser.click_element<br/>─────────────<br/>Element: int"]
+        BPK["browser.press_key<br/>─────────────<br/>Key: string"]
+        BIN["browser.input<br/>─────────────<br/>Text: string"]
+        BGD["browser.get_dom<br/>─────────────<br/>(no args)"]
+        BCS["browser.capture_screenshot<br/>─────────────<br/>(no args)"]
+        BEJ["browser.execute_javascript<br/>─────────────<br/>Code: string"]
+        BSD["browser.scroll_down<br/>─────────────<br/>Amount: int"]
+    end
+    subgraph FileTools["📁 File System Tools (6)"]
+        direction TB
+        FSV["fs.view_file_range<br/>─────────────<br/>Path: string<br/>StartLine: int<br/>EndLine: int"]
+        FSL["fs.list_directory<br/>─────────────<br/>Path: string"]
+        FSW["fs.write_file<br/>─────────────<br/>Path: string<br/>Content: string"]
+        FSM["fs.move_file<br/>─────────────<br/>Source: string<br/>Dest: string"]
+        FSC["fs.copy_file<br/>─────────────<br/>Source: string<br/>Dest: string"]
+        FSD["fs.delete_file<br/>─────────────<br/>Path: string"]
+    end
+    subgraph TerminalTools["⌨️ Terminal Tools (3)"]
+        direction TB
+        TRD["terminal.read<br/>─────────────<br/>Id: string"]
+        TWR["terminal.write<br/>─────────────<br/>Id: string<br/>Command: string"]
+        TKL["terminal.kill<br/>─────────────<br/>Id: string"]
+    end
+    subgraph SearchTools["🔍 Search & Web (5)"]
+        direction TB
+        SIF["search.in_file<br/>─────────────<br/>Query: string<br/>Path: string"]
+        SFN["search.file_name<br/>─────────────<br/>Query: string"]
+        WSE["web.search<br/>─────────────<br/>Query: string"]
+        HRU["http.read_url<br/>─────────────<br/>Url: string"]
+        MWF["mcp.web_fetch<br/>─────────────<br/>Url: string"]
+    end
+    subgraph OtherTools["🔧 Other Tools (5)"]
+        direction TB
+        BDR["browser.drag<br/>─────────────<br/>FromElement: int<br/>ToX: int, ToY: int"]
+        BSA["browser_subagent<br/>─────────────<br/>Task: string"]
+        AUD["audio.play<br/>─────────────<br/>Path: string"]
+        IMG["image.analyze<br/>─────────────<br/>Path: string"]
+        CLB["clipboard.read<br/>─────────────<br/>(no args)"]
+    end
+    style FSW fill:#ff6b6b,color:#fff
+    style BEJ fill:#ffa94d,color:#000
+    style TWR fill:#ffa94d,color:#000
+                    </pre>
+                </div>
+
+                <div class="callout callout-info">
+                    <strong>Key Finding:</strong> Tools like <code>fs.write_file</code>, <code>browser.execute_javascript</code>, and <code>terminal.write</code> are high-risk primitives that can achieve code execution when combined with the extension vulnerability.
                 </div>
             </section>
 
@@ -221,44 +341,61 @@ sequenceDiagram
 
             <section id="attack-surface">
                 <h2>Part 3: Mapping the Attack Surface</h2>
+                <p>Analyzing the extension's message handlers revealed the complete attack surface:</p>
+                <pre><code class="language-bash"># Find message handlers in the extension
+$ grep -E "case|action.*:" service_worker_binary.js
+case 11: // SaveScreenRecording
+case 12: // rpcCall
+case 13: // getCurrentTabId
+case 14: // CHECK_JETSKI_CONNECTION</code></pre>
+
                 <div class="diagram-container">
                     <pre class="mermaid">
 flowchart TB
-    subgraph External["Any Website"]
-        Website["evil.com"]
-        API["chrome.runtime.sendMessage()"]
+    subgraph External["🌐 External Attack Surface"]
+        Website["evil.com<br/>─────────────<br/>Any website on internet"]
+        Payload["Malicious Payload<br/>─────────────<br/>za: byte array<br/>filename: string<br/>L: path component"]
+        API["chrome.runtime.sendMessage()<br/>─────────────<br/>extensionId: 'eeijfnjm...'"]
     end
-    subgraph Extension["Browser Extension"]
-        Handler["qh Handler - No validation"]
-        Router["Action Router"]
+    subgraph Extension["🔓 Browser Extension (Vulnerable)"]
+        Manifest["manifest.json<br/>─────────────<br/>externally_connectable:<br/>matches: ['&lt;all_urls&gt;']"]
+        Handler["qh Handler<br/>─────────────<br/>⚠️ NO sender validation<br/>⚠️ NO origin check"]
+        Router["Action Router<br/>─────────────<br/>Switch on action type"]
     end
-    subgraph Actions["Actions"]
-        A1["rpcCall"]
-        A2["SaveScreenRecording - CRITICAL"]
-        A3["getCurrentTabId"]
+    subgraph Actions["📋 Exposed Actions"]
+        A1["rpcCall<br/>─────────────<br/>cancelCascade<br/>Risk: Low"]
+        A2["SaveScreenRecording<br/>─────────────<br/>⚠️ Arbitrary file write<br/>Risk: CRITICAL"]
+        A3["getCurrentTabId<br/>─────────────<br/>Returns tab info<br/>Risk: Low"]
+        A4["CHECK_JETSKI_CONNECTION<br/>─────────────<br/>Leak connection status<br/>Risk: Medium"]
     end
-    subgraph Backend["Backend"]
-        LS["Language Server"]
-        FS["File System Write"]
+    subgraph Backend["⚙️ Backend Processing"]
+        Proto["Protobuf Message<br/>─────────────<br/>Qg message builder<br/>Fields: za, filename, L"]
+        LS["Language Server<br/>─────────────<br/>Port 53410<br/>gRPC-Web endpoint"]
+        FS["File System<br/>─────────────<br/>⚠️ No path sanitization<br/>⚠️ Path traversal possible"]
     end
-    Website --> API --> Handler --> Router
+    Website --> Payload --> API
+    API --> Manifest --> Handler --> Router
     Router --> A1
     Router --> A2
     Router --> A3
-    A2 --> LS --> FS
-    style A2 fill:#ff6b6b,color:#fff
+    Router --> A4
+    A2 --> Proto --> LS --> FS
+    style A2 fill:#ff6b6b,color:#fff,stroke:#ff6b6b
     style Handler fill:#ffa94d,color:#000
+    style Manifest fill:#ffa94d,color:#000
+    style FS fill:#ff6b6b,color:#fff
+    style Payload fill:#58a6ff,color:#fff
                     </pre>
                 </div>
 
                 <div class="table-wrapper">
                     <table>
-                        <thead><tr><th>Action</th><th>Purpose</th><th>Risk</th></tr></thead>
+                        <thead><tr><th>Action</th><th>Handler</th><th>Purpose</th><th>Parameters</th><th>Risk</th></tr></thead>
                         <tbody>
-                            <tr><td><code>rpcCall.cancelCascade</code></td><td>Cancel automation</td><td class="risk-low">Low</td></tr>
-                            <tr><td><code>getCurrentTabId</code></td><td>Get tab ID</td><td class="risk-low">Low</td></tr>
-                            <tr><td><code>CHECK_JETSKI_CONNECTION</code></td><td>Check LS connection</td><td class="risk-medium">Info disclosure</td></tr>
-                            <tr><td><code>SaveScreenRecording</code></td><td>Save to disk</td><td class="risk-critical">CRITICAL</td></tr>
+                            <tr><td><code>rpcCall.cancelCascade</code></td><td>case 12</td><td>Cancel running automation</td><td>None</td><td class="risk-low">Low</td></tr>
+                            <tr><td><code>getCurrentTabId</code></td><td>case 13</td><td>Get active tab identifier</td><td>None</td><td class="risk-low">Low</td></tr>
+                            <tr><td><code>CHECK_JETSKI_CONNECTION</code></td><td>case 14</td><td>Check Language Server status</td><td>None</td><td class="risk-medium">Info Leak</td></tr>
+                            <tr><td><code>SaveScreenRecording</code></td><td>case 11</td><td>Write file to disk</td><td>za, filename, L</td><td class="risk-critical">CRITICAL</td></tr>
                         </tbody>
                     </table>
                 </div>
@@ -331,17 +468,48 @@ flowchart TB
                 <div class="diagram-container">
                     <pre class="mermaid">
 sequenceDiagram
-    participant V as Victim
-    participant W as evil.com
-    participant E as Extension
-    participant LS as Language Server
-    participant FS as File System
-    V->>W: Visits page
-    W->>E: sendMessage()
-    E->>LS: SaveScreenRecording
-    LS->>FS: Write to Startup
+    autonumber
+    participant V as 👤 Victim
+    participant B as 🌐 Browser
+    participant W as 💀 evil.com
+    participant E as 🔓 Extension
+    participant SW as ⚙️ Service Worker
+    participant LS as 📡 Language Server
+    participant FS as 💾 File System
+    participant OS as 🖥️ Operating System
+
+    V->>B: Opens browser<br/>(Antigravity installed)
+    Note over E: Extension loaded<br/>externally_connectable: all_urls
+
+    V->>W: Visits evil.com
+    Note over W: Page loads with<br/>embedded exploit
+
+    rect rgb(255,107,107,0.1)
+        Note over W,FS: 🔴 ATTACK PHASE - Zero User Interaction
+        W->>E: chrome.runtime.sendMessage()<br/>extensionId: 'eeijfnjm...'
+        Note over W: Payload:<br/>action: SaveScreenRecording<br/>za: [malicious bytes]<br/>filename: WindowsUpdate.bat<br/>L: ../../../AppData/.../Startup
+
+        E->>SW: Route to handler
+        Note over SW: ⚠️ No sender.origin check<br/>⚠️ No sender.tab check
+
+        SW->>SW: Build protobuf message<br/>Qg(za, filename, L)
+        SW->>LS: gRPC-Web POST<br/>/SaveScreenRecording
+
+        Note over LS: Process request<br/>No path validation
+        LS->>FS: Write file<br/>Path: brain/../../../Startup/
+        Note over FS: Path traversal resolves to:<br/>C:\Users\X\Startup\WindowsUpdate.bat
+        FS-->>LS: Success
+    end
+
+    LS-->>E: Response: OK
+    E-->>W: Callback (ignored)
+    Note over V: Victim unaware<br/>No visual indication
+
     rect rgb(248,81,73,0.3)
-        Note over V,FS: Next Login = RCE
+        Note over V,OS: 🔴 PERSISTENCE ACHIEVED
+        V->>OS: Next system login
+        OS->>OS: Execute Startup folder contents
+        Note over OS: WindowsUpdate.bat runs<br/>→ PowerShell reverse shell<br/>→ Full system compromise
     end
                     </pre>
                 </div>
@@ -396,49 +564,104 @@ language_server_windows_x64.exe --csrf_token d0e7aead-f94f-4acb-bf36-84ed12a0e1b
 
             <section id="root-causes">
                 <h2>Part 8: Root Causes</h2>
+                <p>Three distinct security failures combined to create this vulnerability:</p>
                 <div class="diagram-container">
                     <pre class="mermaid">
 flowchart TB
-    RC1["externally_connectable: all_urls"] --> Vuln
-    RC2["sender never validated"] --> Vuln
-    RC3["No path sanitization"] --> Vuln
-    Vuln["Zero-Click RCE"]
-    style Vuln fill:#ff6b6b,color:#fff
+    subgraph RC1_Box["🔓 Root Cause 1: Overly Permissive Manifest"]
+        RC1["externally_connectable: &lt;all_urls&gt;<br/>─────────────<br/>• Any website can send messages<br/>• No domain allowlist<br/>• Chrome's protection bypassed"]
+        RC1_Fix["✅ Fix: Restrict to specific origins<br/>or remove externally_connectable"]
+    end
+    subgraph RC2_Box["⚠️ Root Cause 2: Missing Origin Validation"]
+        RC2["No sender.origin check<br/>─────────────<br/>• Handler trusts all messages<br/>• No sender.tab verification<br/>• No sender.id comparison"]
+        RC2_Fix["✅ Fix: Validate sender.url<br/>contains offscreen.html"]
+    end
+    subgraph RC3_Box["📁 Root Cause 3: Path Traversal"]
+        RC3["No path sanitization<br/>─────────────<br/>• L parameter unchecked<br/>• ../ sequences allowed<br/>• Arbitrary write location"]
+        RC3_Fix["✅ Fix: Sanitize path components<br/>reject ../ sequences"]
+    end
+    subgraph Impact["💀 Combined Impact"]
+        Vuln["Zero-Click RCE<br/>─────────────<br/>CVSS: 9.8 Critical<br/>• No user interaction<br/>• Persistent compromise<br/>• Full system access"]
+    end
+    RC1 --> Vuln
+    RC2 --> Vuln
+    RC3 --> Vuln
+    RC1 -.-> RC1_Fix
+    RC2 -.-> RC2_Fix
+    RC3 -.-> RC3_Fix
+    style Vuln fill:#ff6b6b,color:#fff,stroke:#ff6b6b
     style RC1 fill:#ffa94d,color:#000
     style RC2 fill:#ffa94d,color:#000
     style RC3 fill:#ffa94d,color:#000
+    style RC1_Fix fill:#3fb950,color:#fff
+    style RC2_Fix fill:#3fb950,color:#fff
+    style RC3_Fix fill:#3fb950,color:#fff
                     </pre>
+                </div>
+
+                <div class="callout callout-warning">
+                    <strong>Key Insight:</strong> Each vulnerability alone might be considered low-to-medium severity. Combined, they form a critical attack chain. This is a common pattern in real-world exploits.
                 </div>
             </section>
 
             <section id="fix">
                 <h2>Part 9: The Fix</h2>
+                <p>Google's fix in version 1.11.3 implements a three-layer validation:</p>
                 <div class="diagram-container">
                     <pre class="mermaid">
 flowchart TB
-    Check1["sender.url includes offscreen.html?"] -->|Yes| Check2
-    Check1 -->|No| Deny
-    Check2["sender.id === runtime.id?"] -->|Yes| Check3
-    Check2 -->|No| Deny
-    Check3["!sender.tab?"] -->|Yes| Allow
-    Check3 -->|No| Deny
-    Allow["Allow"]
-    Deny["Deny"]
+    subgraph Incoming["📨 Incoming Message"]
+        Msg["SaveScreenRecording Request<br/>─────────────<br/>sender object attached"]
+    end
+    subgraph Validation["🔒 Three-Layer Validation"]
+        Check1["1️⃣ Origin Check<br/>─────────────<br/>sender.url includes<br/>'/static/offscreen.html'?"]
+        Check2["2️⃣ Extension ID Check<br/>─────────────<br/>sender.id === <br/>chrome.runtime.id?"]
+        Check3["3️⃣ Context Check<br/>─────────────<br/>!sender.tab?<br/>(not from web page)"]
+    end
+    subgraph Results["📋 Results"]
+        Allow["✅ ALLOW<br/>─────────────<br/>Process request<br/>Write to filesystem"]
+        Deny["❌ DENY<br/>─────────────<br/>Return error<br/>Log attempt"]
+    end
+    Msg --> Check1
+    Check1 -->|"✓ Yes"| Check2
+    Check1 -->|"✗ No"| Deny
+    Check2 -->|"✓ Yes"| Check3
+    Check2 -->|"✗ No"| Deny
+    Check3 -->|"✓ Yes (null)"| Allow
+    Check3 -->|"✗ No (has tab)"| Deny
     style Allow fill:#3fb950,color:#fff
     style Deny fill:#ff6b6b,color:#fff
+    style Check1 fill:#58a6ff,color:#fff
+    style Check2 fill:#58a6ff,color:#fff
+    style Check3 fill:#58a6ff,color:#fff
                     </pre>
                 </div>
-                <pre><code class="language-javascript">function isAuthorizedSender(sender) {
-  return (
-    sender.url?.includes("/static/offscreen.html") &&
-    sender.id === chrome.runtime.id &&
-    !sender.tab
-  );
+                <pre><code class="language-javascript">// Fixed version - validates message origin
+function isAuthorizedSender(sender) {
+  // Check 1: Must come from offscreen document
+  const isFromOffscreen = sender.url?.includes("/static/offscreen.html");
+
+  // Check 2: Must be from same extension
+  const isSameExtension = sender.id === chrome.runtime.id;
+
+  // Check 3: Must NOT come from a tab (web pages have sender.tab)
+  const isNotFromTab = !sender.tab;
+
+  return isFromOffscreen && isSameExtension && isNotFromTab;
 }
 
-if (!isAuthorizedSender(sender)) {
-  return { error: "Unauthorized" };
-}</code></pre>
+// In message handler
+chrome.runtime.onMessageExternal.addListener((message, sender, sendResponse) => {
+  if (!isAuthorizedSender(sender)) {
+    console.warn("Unauthorized message attempt from:", sender.origin);
+    return { error: "Unauthorized" };
+  }
+  // ... process legitimate message
+});</code></pre>
+
+                <div class="callout callout-success">
+                    <strong>Defense in Depth:</strong> The fix validates at multiple layers - origin URL, extension ID, and context type. Even if one check is bypassed, others prevent exploitation.
+                </div>
             </section>
 
             <section id="lessons">
@@ -464,17 +687,6 @@ if (!isAuthorizedSender(sender)) {
                 <blockquote class="key-takeaway">
                     <strong>Always verify who's asking. Always sanitize paths. Always assume external input is malicious.</strong>
                 </blockquote>
-            </section>
-
-            <section id="timeline">
-                <h2>Timeline</h2>
-                <div class="timeline">
-                    <div class="timeline-item"><span class="timeline-date">Nov 18, 2025</span><span class="timeline-event">Antigravity IDE launched</span></div>
-                    <div class="timeline-item"><span class="timeline-date">Nov 19, 2025</span><span class="timeline-event">Reverse engineering started</span></div>
-                    <div class="timeline-item"><span class="timeline-date">Nov 25, 2025</span><span class="timeline-event">Vulnerability discovered</span></div>
-                    <div class="timeline-item"><span class="timeline-date">Nov 26, 2025</span><span class="timeline-event">Additional vectors documented</span></div>
-                    <div class="timeline-item fixed"><span class="timeline-date">v1.11.3</span><span class="timeline-event">Patched</span></div>
-                </div>
             </section>
 
             <section id="conclusion">
