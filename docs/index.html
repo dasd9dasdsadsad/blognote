@@ -128,50 +128,32 @@ third_party/jetski/cortex/handlers/read_browser_page_handler.go</code></pre>
 
                 <h3>The Six-Layer Architecture</h3>
                 <p>Putting it all together, here is the complete system:</p>
-                <div class="diagram-container">
-                    <div class="mermaid-placeholder" data-diagram="architecture">
-                        <div class="architecture-visual">
-                            <div class="layer layer-1">
-                                <span class="layer-num">L1</span>
-                                <span class="layer-name">User Interface</span>
-                                <span class="layer-detail">Antigravity IDE (VS Code Fork)</span>
-                            </div>
-                            <div class="arrow-down"></div>
-                            <div class="layer layer-2">
-                                <span class="layer-num">L2</span>
-                                <span class="layer-name">AI Inference</span>
-                                <span class="layer-detail">Jetski Server + Gemini Model</span>
-                            </div>
-                            <div class="arrow-down"></div>
-                            <div class="layer layer-3">
-                                <span class="layer-num">L3</span>
-                                <span class="layer-name">Language Server (Cortex)</span>
-                                <span class="layer-detail">gRPC-Web + CSRF + File System</span>
-                            </div>
-                            <div class="arrow-down"></div>
-                            <div class="layer layer-4">
-                                <span class="layer-num">L4</span>
-                                <span class="layer-name">MCP Server</span>
-                                <span class="layer-detail">@agentdeskai/browser-tools-mcp</span>
-                            </div>
-                            <div class="arrow-down"></div>
-                            <div class="layer layer-5 vulnerable">
-                                <span class="layer-num">L5</span>
-                                <span class="layer-name">Browser Extension</span>
-                                <span class="layer-detail warning">externally_connectable: &lt;all_urls&gt;</span>
-                            </div>
-                            <div class="arrow-down"></div>
-                            <div class="layer layer-6">
-                                <span class="layer-num">L6</span>
-                                <span class="layer-name">Chrome Browser (CDP)</span>
-                                <span class="layer-detail">Port 9222 - DevTools Protocol</span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+                <pre><code class="language-plaintext">┌─────────────────────────────────────────────────────────┐
+│  Antigravity IDE (VS Code Fork)                         │
+└─────────────────────┬───────────────────────────────────┘
+                      │
+                      ▼
+┌─────────────────────────────────────────────────────────┐
+│  Jetski Server + Gemini Model                           │
+└─────────────────────┬───────────────────────────────────┘
+                      │
+                      ▼
+┌─────────────────────────────────────────────────────────┐
+│  Language Server (Cortex) - gRPC-Web, File System       │
+└─────────────────────┬───────────────────────────────────┘
+                      │
+                      ▼
+┌─────────────────────────────────────────────────────────┐
+│  Browser Extension  ⚠️  externally_connectable: all_urls │
+└─────────────────────┬───────────────────────────────────┘
+                      │
+                      ▼
+┌─────────────────────────────────────────────────────────┐
+│  Chrome Browser (CDP on port 9222)                      │
+└─────────────────────────────────────────────────────────┘</code></pre>
 
                 <h3>The Complete Tool Arsenal</h3>
-                <p>By extracting strings from the binary, I reconstructed the complete set of tools:</p>
+                <p>Using <code>strings</code> and grepping for patterns like <code>browser.</code> and <code>fs.</code>, I mapped the tool names from the handler filenames (e.g., <code>browser_click_element_handler.go</code> → <code>browser.click_element</code>):</p>
                 <div class="tool-grid">
                     <div class="tool-category">
                         <h4>Browser Navigation</h4>
@@ -234,28 +216,13 @@ third_party/jetski/cortex/handlers/read_browser_page_handler.go</code></pre>
                 <p>With external messaging enabled for all URLs, the next step was understanding what messages the extension accepts and what they can do.</p>
 
                 <h3>Exposed External API</h3>
-                <div class="table-wrapper">
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>Action</th>
-                                <th>Purpose</th>
-                                <th>Risk</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <tr><td><code>rpcCall.cancelCascade</code></td><td>Cancel automation</td><td class="risk-low">Low</td></tr>
-                            <tr><td><code>rpcCall.validateCascadeOrCancelOverlay</code></td><td>Validate/cancel overlay</td><td class="risk-low">Low</td></tr>
-                            <tr><td><code>rpcCall.smartFocusConversation</code></td><td>Focus conversation</td><td class="risk-low">Low</td></tr>
-                            <tr><td><code>registerTargetID</code></td><td>Register tab target</td><td class="risk-low">Low</td></tr>
-                            <tr><td><code>getCurrentTabId</code></td><td>Get tab ID</td><td class="risk-low">Low</td></tr>
-                            <tr><td><code>getMimeType</code></td><td>Get tab MIME type</td><td class="risk-low">Low</td></tr>
-                            <tr><td><code>CHECK_JETSKI_CONNECTION</code></td><td>Check LS connection</td><td class="risk-medium">Info disclosure</td></tr>
-                            <tr><td><code>SaveScreenRecording</code></td><td>Save recording to disk</td><td class="risk-critical">CRITICAL</td></tr>
-                        </tbody>
-                    </table>
-                </div>
-                <p>The <code>SaveScreenRecording</code> handler stood out immediately.</p>
+                <p>The extension exposes several message handlers to external websites. Most are low-risk utility functions, but one stood out:</p>
+                <ul>
+                    <li><code>rpcCall.*</code> — UI control functions (Low risk)</li>
+                    <li><code>getCurrentTabId</code>, <code>getMimeType</code> — Tab info (Low risk)</li>
+                    <li><code>CHECK_JETSKI_CONNECTION</code> — Reveals if Antigravity is running (Info leak)</li>
+                    <li><strong><code>SaveScreenRecording</code> — Writes files to disk (CRITICAL)</strong></li>
+                </ul>
             </section>
 
             <section id="vulnerability">
@@ -300,8 +267,9 @@ third_party/jetski/cortex/handlers/read_browser_page_handler.go</code></pre>
                     </div>
                 </div>
 
-                <p>The handler code (deobfuscated):</p>
-                <pre><code class="language-javascript">case 11:  // SaveScreenRecording
+                <p>The handler code from <code>service-worker.js</code> (deobfuscated):</p>
+                <pre><code class="language-javascript">// service-worker.js - SaveScreenRecording handler
+case 11:  // SaveScreenRecording
     // Validates message SHAPE, not ORIGIN
     if (!a || typeof a !== "object" ||
         a.action !== "SaveScreenRecording" ||
@@ -471,7 +439,8 @@ chrome.runtime.sendMessage("eeijfnjmjelapkebgockoeaadonbchdd", {
                 <h2>Part 8: The Fix</h2>
                 <p>Google addressed the vulnerability in version 1.11.3 by adding proper sender validation:</p>
 
-                <pre><code class="language-javascript">function isAuthorizedSender(sender) {
+                <pre><code class="language-javascript">// service-worker.js (v1.11.3)
+function isAuthorizedSender(sender) {
   return (
     sender.url?.includes("/static/offscreen.html") &&
     sender.id === chrome.runtime.id &&
@@ -503,6 +472,10 @@ if (!isAuthorizedSender(sender)) {
                 </div>
 
                 <p>Now only the legitimate offscreen document within the extension itself can trigger file saves.</p>
+
+                <div class="callout callout-warning">
+                    <strong>Note:</strong> The path traversal issue was not addressed — the fix only added sender validation. The <code>filename</code> and <code>L</code> parameters are still passed unsanitized to the Language Server.
+                </div>
             </section>
 
             <section id="lessons">
@@ -590,6 +563,10 @@ if (!isAuthorizedSender(sender)) {
                     <div class="timeline-item fixed">
                         <span class="timeline-date">Nov 25, 2025</span>
                         <span class="timeline-event">Patched with sender validation (v1.11.3)</span>
+                    </div>
+                    <div class="timeline-item">
+                        <span class="timeline-date">Nov 26, 2025</span>
+                        <span class="timeline-event">Report marked as duplicate — bug bounty life 🤷</span>
                     </div>
                 </div>
             </section>
