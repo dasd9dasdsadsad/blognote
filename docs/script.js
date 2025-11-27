@@ -77,8 +77,10 @@ function initThemeToggle() {
 
     if (savedTheme) {
         html.dataset.theme = savedTheme;
+        updateMermaidTheme(savedTheme);
     } else if (!systemDark) {
         html.dataset.theme = 'light';
+        updateMermaidTheme('light');
     }
 
     toggle.addEventListener('click', () => {
@@ -87,6 +89,7 @@ function initThemeToggle() {
 
         html.dataset.theme = newTheme;
         localStorage.setItem('theme', newTheme);
+        updateMermaidTheme(newTheme);
 
         // Add transition class
         html.classList.add('theme-transitioning');
@@ -96,9 +99,59 @@ function initThemeToggle() {
     // Listen for system theme changes
     window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e) => {
         if (!localStorage.getItem('theme')) {
-            html.dataset.theme = e.matches ? 'dark' : 'light';
+            const theme = e.matches ? 'dark' : 'light';
+            html.dataset.theme = theme;
+            updateMermaidTheme(theme);
         }
     });
+}
+
+// Update Mermaid theme
+function updateMermaidTheme(theme) {
+    if (typeof mermaid !== 'undefined') {
+        const isDark = theme === 'dark';
+        mermaid.initialize({
+            startOnLoad: false,
+            theme: isDark ? 'dark' : 'default',
+            themeVariables: isDark ? {
+                primaryColor: '#58a6ff',
+                primaryTextColor: '#e6edf3',
+                primaryBorderColor: '#30363d',
+                lineColor: '#8b949e',
+                secondaryColor: '#21262d',
+                tertiaryColor: '#161b22',
+                background: '#0d1117',
+                mainBkg: '#161b22',
+                nodeBorder: '#30363d',
+                clusterBkg: '#21262d',
+                titleColor: '#e6edf3',
+                edgeLabelBackground: '#161b22'
+            } : {
+                primaryColor: '#0969da',
+                primaryTextColor: '#1f2328',
+                primaryBorderColor: '#d0d7de',
+                lineColor: '#57606a',
+                secondaryColor: '#f6f8fa',
+                tertiaryColor: '#eaeef2',
+                background: '#ffffff',
+                mainBkg: '#f6f8fa',
+                nodeBorder: '#d0d7de',
+                clusterBkg: '#eaeef2',
+                titleColor: '#1f2328',
+                edgeLabelBackground: '#f6f8fa'
+            },
+            flowchart: { curve: 'basis', padding: 20 },
+            securityLevel: 'loose'
+        });
+
+        // Re-render all mermaid diagrams
+        document.querySelectorAll('.mermaid').forEach(el => {
+            const code = el.textContent || el.innerText;
+            el.removeAttribute('data-processed');
+            el.innerHTML = code;
+        });
+        mermaid.init(undefined, '.mermaid');
+    }
 }
 
 // Back to Top Button
