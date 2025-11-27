@@ -1,47 +1,49 @@
 /* CSS Variables for theming */
 :root {
     /* Dark theme (default) */
-    --bg-primary: #0d1117;
-    --bg-secondary: #161b22;
-    --bg-tertiary: #21262d;
-    --bg-code: #1a1f26;
-    --text-primary: #e6edf3;
-    --text-secondary: #8b949e;
-    --text-muted: #6e7681;
-    --accent: #58a6ff;
-    --accent-hover: #79b8ff;
-    --border: #30363d;
-    --danger: #f85149;
-    --danger-bg: rgba(248, 81, 73, 0.1);
-    --warning: #d29922;
-    --warning-bg: rgba(210, 153, 34, 0.1);
-    --success: #3fb950;
-    --success-bg: rgba(63, 185, 80, 0.1);
-    --gradient-start: #58a6ff;
-    --gradient-end: #a371f7;
+    --bg-primary: #0f172a;
+    --bg-secondary: #1e293b;
+    --bg-tertiary: #334155;
+    --bg-code: #1e293b;
+    --text-primary: #f1f5f9;
+    --text-secondary: #94a3b8;
+    --text-muted: #64748b;
+    --accent: #60a5fa;
+    --accent-hover: #93c5fd;
+    --border: #334155;
+    --danger: #f87171;
+    --danger-bg: rgba(248, 113, 113, 0.15);
+    --warning: #fbbf24;
+    --warning-bg: rgba(251, 191, 36, 0.15);
+    --success: #4ade80;
+    --success-bg: rgba(74, 222, 128, 0.15);
+    --gradient-start: #60a5fa;
+    --gradient-end: #a78bfa;
     --shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
     --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.3);
 }
 
 [data-theme="light"] {
     --bg-primary: #ffffff;
-    --bg-secondary: #f6f8fa;
-    --bg-tertiary: #eaeef2;
-    --bg-code: #f6f8fa;
-    --text-primary: #1f2328;
-    --text-secondary: #57606a;
-    --text-muted: #8c959f;
-    --accent: #0969da;
-    --accent-hover: #0550ae;
-    --border: #d0d7de;
-    --danger: #cf222e;
-    --danger-bg: rgba(207, 34, 46, 0.1);
-    --warning: #9a6700;
-    --warning-bg: rgba(154, 103, 0, 0.1);
-    --success: #1a7f37;
-    --success-bg: rgba(26, 127, 55, 0.1);
-    --shadow: 0 8px 24px rgba(140, 149, 159, 0.2);
-    --shadow-sm: 0 2px 8px rgba(140, 149, 159, 0.15);
+    --bg-secondary: #f8fafc;
+    --bg-tertiary: #f1f5f9;
+    --bg-code: #f8fafc;
+    --text-primary: #0f172a;
+    --text-secondary: #475569;
+    --text-muted: #64748b;
+    --accent: #2563eb;
+    --accent-hover: #1d4ed8;
+    --border: #e2e8f0;
+    --danger: #dc2626;
+    --danger-bg: rgba(220, 38, 38, 0.08);
+    --warning: #d97706;
+    --warning-bg: rgba(217, 119, 6, 0.08);
+    --success: #16a34a;
+    --success-bg: rgba(22, 163, 74, 0.08);
+    --gradient-start: #2563eb;
+    --gradient-end: #7c3aed;
+    --shadow: 0 4px 20px rgba(15, 23, 42, 0.08);
+    --shadow-sm: 0 2px 8px rgba(15, 23, 42, 0.06);
 }
 
 /* Reset and base */
@@ -1337,6 +1339,60 @@ tr:last-child td {
 .hljs {
     background: transparent !important;
     padding: 0 !important;
+}
+
+/* Light mode code syntax colors */
+[data-theme="light"] .hljs {
+    color: #1e293b;
+}
+
+[data-theme="light"] .hljs-keyword,
+[data-theme="light"] .hljs-selector-tag,
+[data-theme="light"] .hljs-title,
+[data-theme="light"] .hljs-section,
+[data-theme="light"] .hljs-doctag,
+[data-theme="light"] .hljs-name,
+[data-theme="light"] .hljs-strong {
+    color: #7c3aed;
+}
+
+[data-theme="light"] .hljs-string,
+[data-theme="light"] .hljs-attr {
+    color: #059669;
+}
+
+[data-theme="light"] .hljs-comment,
+[data-theme="light"] .hljs-quote {
+    color: #64748b;
+}
+
+[data-theme="light"] .hljs-number,
+[data-theme="light"] .hljs-literal {
+    color: #dc2626;
+}
+
+[data-theme="light"] .hljs-built_in,
+[data-theme="light"] .hljs-type {
+    color: #2563eb;
+}
+
+/* Light mode specific element improvements */
+[data-theme="light"] .article-content pre {
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+}
+
+[data-theme="light"] .article-content code {
+    background: #f1f5f9;
+    border-color: #e2e8f0;
+}
+
+[data-theme="light"] .navbar {
+    background: rgba(255, 255, 255, 0.9);
+}
+
+[data-theme="light"] .video-wrapper {
+    background: #1e293b;
 }
 
 /* Responsive */
