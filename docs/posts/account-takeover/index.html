@@ -131,48 +131,13 @@ fetch(`/api/v1/verification/${codeId}`, { method: 'POST', body: { secret } })
 
             <section id="impact">
                 <h2>Impact</h2>
-                <div class="impact-grid">
-                    <div class="impact-item critical">
-                        <div class="impact-icon">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="24" height="24">
-                                <path d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
-                            </svg>
-                        </div>
-                        <h4>Account Lockout</h4>
-                        <p>Permanent lockout of victim accounts</p>
-                    </div>
-                    <div class="impact-item critical">
-                        <div class="impact-icon">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="24" height="24">
-                                <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
-                                <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
-                            </svg>
-                        </div>
-                        <h4>Data Access</h4>
-                        <p>Access to projects, env variables, secrets</p>
-                    </div>
-                    <div class="impact-item critical">
-                        <div class="impact-icon">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="24" height="24">
-                                <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
-                                <polyline points="3.27 6.96 12 12.01 20.73 6.96"/>
-                                <line x1="12" y1="22.08" x2="12" y2="12"/>
-                            </svg>
-                        </div>
-                        <h4>Supply Chain Risk</h4>
-                        <p>Potential for malicious deployments</p>
-                    </div>
-                </div>
-
-                <div class="cvss-score">
-                    <span class="cvss-value">9+</span>
-                    <span class="cvss-label">CRITICAL</span>
-                </div>
-
-                <div class="bounty-box">
-                    <span class="bounty-amount">$6,000</span>
-                    <span class="bounty-label">Bug Bounty Payout</span>
-                </div>
+                <p>This vulnerability allowed complete account takeover with a single click:</p>
+                <ul>
+                    <li><strong>Account Lockout:</strong> Permanent lockout of victim accounts</li>
+                    <li><strong>Data Access:</strong> Access to projects, environment variables, secrets</li>
+                    <li><strong>Supply Chain Risk:</strong> Potential for malicious deployments</li>
+                </ul>
+                <p><strong>Severity:</strong> Critical (CVSS 9+) | <strong>Bounty:</strong> $6,000</p>
             </section>
 
             <section id="defense">

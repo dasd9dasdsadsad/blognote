@@ -1753,6 +1753,17 @@ tr:last-child td {
     gap: 0.25rem;
 }
 
+.stat-value {
+    display: flex;
+    align-items: baseline;
+}
+
+.stat-prefix {
+    font-size: 1.5rem;
+    font-weight: 800;
+    color: var(--success);
+}
+
 .stat-number {
     font-size: 2rem;
     font-weight: 800;
@@ -1760,16 +1771,14 @@ tr:last-child td {
     line-height: 1;
 }
 
+.stat-number.counter {
+    color: var(--success);
+}
+
 .stat-number.critical-text {
     font-size: 1rem;
     color: var(--danger);
     letter-spacing: 1px;
-}
-
-.stat-currency {
-    font-size: 1rem;
-    color: var(--success);
-    margin-left: 2px;
 }
 
 .stat-desc {
