@@ -91,12 +91,21 @@ function initThemeToggle() {
         // Add transition class
         html.classList.add('theme-transitioning');
         setTimeout(() => html.classList.remove('theme-transitioning'), 300);
+
+        // Re-render Mermaid diagrams with new theme
+        if (typeof updateDiagramTheme === 'function') {
+            setTimeout(updateDiagramTheme, 100);
+        }
     });
 
     // Listen for system theme changes
     window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e) => {
         if (!localStorage.getItem('theme')) {
             html.dataset.theme = e.matches ? 'dark' : 'light';
+            // Re-render Mermaid diagrams with new theme
+            if (typeof updateDiagramTheme === 'function') {
+                setTimeout(updateDiagramTheme, 100);
+            }
         }
     });
 }

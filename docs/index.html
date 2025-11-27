@@ -12,27 +12,233 @@
     <link rel="stylesheet" href="style.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
     <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/panzoom@9.4.3/dist/panzoom.min.js"></script>
     <script>
+        // Theme-aware Mermaid configuration
+        function getMermaidTheme() {
+            const isDark = document.documentElement.getAttribute('data-theme') !== 'light';
+            return {
+                theme: 'base',
+                themeVariables: isDark ? {
+                    // Dark theme colors
+                    primaryColor: '#238636',
+                    primaryTextColor: '#e6edf3',
+                    primaryBorderColor: '#3fb950',
+                    lineColor: '#8b949e',
+                    secondaryColor: '#21262d',
+                    tertiaryColor: '#161b22',
+                    background: '#0d1117',
+                    mainBkg: '#21262d',
+                    nodeBorder: '#3fb950',
+                    clusterBkg: '#161b22',
+                    clusterBorder: '#30363d',
+                    titleColor: '#e6edf3',
+                    edgeLabelBackground: '#21262d',
+                    nodeTextColor: '#e6edf3',
+                    actorTextColor: '#e6edf3',
+                    actorBkg: '#21262d',
+                    actorBorder: '#3fb950',
+                    signalColor: '#e6edf3',
+                    signalTextColor: '#e6edf3',
+                    labelBoxBkgColor: '#21262d',
+                    labelBoxBorderColor: '#30363d',
+                    labelTextColor: '#e6edf3',
+                    loopTextColor: '#e6edf3',
+                    noteBkgColor: '#161b22',
+                    noteTextColor: '#e6edf3',
+                    noteBorderColor: '#58a6ff',
+                    activationBkgColor: '#21262d',
+                    activationBorderColor: '#3fb950',
+                    sequenceNumberColor: '#0d1117',
+                    sectionBkgColor: '#21262d',
+                    altSectionBkgColor: '#161b22',
+                    sectionBkgColor2: '#21262d',
+                    taskBkgColor: '#238636',
+                    taskTextColor: '#e6edf3',
+                    taskTextLightColor: '#e6edf3',
+                    taskBorderColor: '#3fb950',
+                    gridColor: '#30363d',
+                    doneTaskBkgColor: '#238636',
+                    doneTaskBorderColor: '#3fb950',
+                    critBkgColor: '#f85149',
+                    critBorderColor: '#f85149',
+                    todayLineColor: '#58a6ff',
+                    stateBkg: '#21262d',
+                    stateBorder: '#3fb950',
+                    transitionColor: '#8b949e',
+                    transitionLabelColor: '#e6edf3'
+                } : {
+                    // Light theme colors
+                    primaryColor: '#2da44e',
+                    primaryTextColor: '#1f2328',
+                    primaryBorderColor: '#2da44e',
+                    lineColor: '#656d76',
+                    secondaryColor: '#f6f8fa',
+                    tertiaryColor: '#ffffff',
+                    background: '#ffffff',
+                    mainBkg: '#f6f8fa',
+                    nodeBorder: '#2da44e',
+                    clusterBkg: '#f6f8fa',
+                    clusterBorder: '#d0d7de',
+                    titleColor: '#1f2328',
+                    edgeLabelBackground: '#f6f8fa',
+                    nodeTextColor: '#1f2328',
+                    actorTextColor: '#1f2328',
+                    actorBkg: '#f6f8fa',
+                    actorBorder: '#2da44e',
+                    signalColor: '#1f2328',
+                    signalTextColor: '#1f2328',
+                    labelBoxBkgColor: '#f6f8fa',
+                    labelBoxBorderColor: '#d0d7de',
+                    labelTextColor: '#1f2328',
+                    loopTextColor: '#1f2328',
+                    noteBkgColor: '#fff8c5',
+                    noteTextColor: '#1f2328',
+                    noteBorderColor: '#d4a72c',
+                    activationBkgColor: '#f6f8fa',
+                    activationBorderColor: '#2da44e',
+                    sequenceNumberColor: '#ffffff',
+                    stateBkg: '#f6f8fa',
+                    stateBorder: '#2da44e',
+                    transitionColor: '#656d76',
+                    transitionLabelColor: '#1f2328'
+                }
+            };
+        }
+
+        // Initialize Mermaid
         mermaid.initialize({
-            startOnLoad: true,
-            theme: 'dark',
-            themeVariables: {
-                primaryColor: '#58a6ff',
-                primaryTextColor: '#e6edf3',
-                primaryBorderColor: '#30363d',
-                lineColor: '#8b949e',
-                secondaryColor: '#21262d',
-                tertiaryColor: '#161b22',
-                background: '#0d1117',
-                mainBkg: '#161b22',
-                nodeBorder: '#30363d',
-                clusterBkg: '#21262d',
-                titleColor: '#e6edf3',
-                edgeLabelBackground: '#161b22'
+            startOnLoad: false,
+            ...getMermaidTheme(),
+            flowchart: {
+                curve: 'basis',
+                padding: 20,
+                htmlLabels: true,
+                useMaxWidth: false
             },
-            flowchart: { curve: 'basis', padding: 20 },
-            securityLevel: 'loose'
+            sequence: {
+                useMaxWidth: false,
+                wrap: true
+            },
+            state: {
+                useMaxWidth: false
+            },
+            securityLevel: 'loose',
+            fontFamily: '"Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif'
         });
+
+        // Render diagrams and add zoom functionality
+        async function renderDiagrams() {
+            const diagrams = document.querySelectorAll('.mermaid');
+
+            for (let i = 0; i < diagrams.length; i++) {
+                const diagram = diagrams[i];
+                const code = diagram.textContent;
+                const id = `mermaid-diagram-${i}`;
+
+                try {
+                    const { svg } = await mermaid.render(id, code);
+                    diagram.innerHTML = svg;
+
+                    // Add zoom controls wrapper
+                    const container = diagram.closest('.diagram-container');
+                    if (container && !container.querySelector('.diagram-controls')) {
+                        // Create controls
+                        const controls = document.createElement('div');
+                        controls.className = 'diagram-controls';
+                        controls.innerHTML = `
+                            <button class="diagram-btn zoom-in" title="Zoom In">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <circle cx="11" cy="11" r="8"></circle>
+                                    <path d="M21 21l-4.35-4.35M11 8v6M8 11h6"></path>
+                                </svg>
+                            </button>
+                            <button class="diagram-btn zoom-out" title="Zoom Out">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <circle cx="11" cy="11" r="8"></circle>
+                                    <path d="M21 21l-4.35-4.35M8 11h6"></path>
+                                </svg>
+                            </button>
+                            <button class="diagram-btn zoom-reset" title="Reset">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path>
+                                    <path d="M3 3v5h5"></path>
+                                </svg>
+                            </button>
+                            <button class="diagram-btn fullscreen-btn" title="Fullscreen">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path>
+                                </svg>
+                            </button>
+                        `;
+                        container.insertBefore(controls, container.firstChild);
+
+                        // Create zoom wrapper
+                        const zoomWrapper = document.createElement('div');
+                        zoomWrapper.className = 'diagram-zoom-wrapper';
+                        diagram.parentNode.insertBefore(zoomWrapper, diagram);
+                        zoomWrapper.appendChild(diagram);
+
+                        // Initialize panzoom
+                        const svgElement = diagram.querySelector('svg');
+                        if (svgElement && typeof panzoom !== 'undefined') {
+                            const pz = panzoom(svgElement, {
+                                maxZoom: 5,
+                                minZoom: 0.3,
+                                initialZoom: 1,
+                                bounds: false,
+                                boundsPadding: 0.1,
+                                smoothScroll: false
+                            });
+
+                            // Store panzoom instance
+                            container.panzoomInstance = pz;
+
+                            // Control button handlers
+                            controls.querySelector('.zoom-in').addEventListener('click', () => {
+                                pz.smoothZoom(svgElement.clientWidth / 2, svgElement.clientHeight / 2, 1.5);
+                            });
+                            controls.querySelector('.zoom-out').addEventListener('click', () => {
+                                pz.smoothZoom(svgElement.clientWidth / 2, svgElement.clientHeight / 2, 0.67);
+                            });
+                            controls.querySelector('.zoom-reset').addEventListener('click', () => {
+                                pz.moveTo(0, 0);
+                                pz.zoomAbs(0, 0, 1);
+                            });
+                            controls.querySelector('.fullscreen-btn').addEventListener('click', () => {
+                                container.classList.toggle('diagram-fullscreen');
+                                if (container.classList.contains('diagram-fullscreen')) {
+                                    document.body.style.overflow = 'hidden';
+                                } else {
+                                    document.body.style.overflow = '';
+                                }
+                                setTimeout(() => pz.zoomAbs(0, 0, 1), 100);
+                            });
+                        }
+                    }
+                } catch (error) {
+                    console.error('Mermaid render error:', error);
+                    diagram.innerHTML = `<div class="diagram-error">Error rendering diagram</div>`;
+                }
+            }
+        }
+
+        // Re-render diagrams on theme change
+        function updateDiagramTheme() {
+            const config = getMermaidTheme();
+            mermaid.initialize({
+                ...config,
+                startOnLoad: false,
+                flowchart: { curve: 'basis', padding: 20, htmlLabels: true, useMaxWidth: false },
+                sequence: { useMaxWidth: false, wrap: true },
+                state: { useMaxWidth: false },
+                securityLevel: 'loose'
+            });
+            renderDiagrams();
+        }
+
+        // Initialize on DOM ready
+        document.addEventListener('DOMContentLoaded', renderDiagrams);
     </script>
 </head>
 <body>
