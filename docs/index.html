@@ -384,27 +384,8 @@ chrome.runtime.sendMessage("eeijfnjmjelapkebgockoeaadonbchdd", {
 &lt;/html&gt;</code></pre>
             </section>
 
-            <section id="discovery">
-                <h2>Part 7: An Interesting Discovery</h2>
-                <div class="diagram-container">
-                    <pre class="mermaid">
-flowchart LR
-    subgraph Offscreen["offscreen_binary.js"]
-        O1["Sends: K, H"]
-    end
-    subgraph SW["service_worker_binary.js"]
-        S1["Expects: za, L"]
-    end
-    O1 -->|"Mismatch!"| S1
-    style O1 fill:#ffa94d,color:#000
-    style S1 fill:#ff6b6b,color:#fff
-                    </pre>
-                </div>
-                <p>The minifier assigned different names in each file! Internal flow may be broken—but attackers just need the service worker's expected names.</p>
-            </section>
-
             <section id="additional-vectors">
-                <h2>Part 8: Additional Attack Vectors</h2>
+                <h2>Part 7: Additional Attack Vectors</h2>
                 <h3>CDP Exposure</h3>
                 <pre><code class="language-bash">$ curl http://127.0.0.1:9222/json/list
 # Returns all debug targets - no auth required!</code></pre>
@@ -413,35 +394,8 @@ flowchart LR
 language_server_windows_x64.exe --csrf_token d0e7aead-f94f-4acb-bf36-84ed12a0e1bb</code></pre>
             </section>
 
-            <section id="impact">
-                <h2>Part 9: Impact Assessment</h2>
-                <div class="cvss-score">
-                    <div class="cvss-value">9.8</div>
-                    <div class="cvss-label">CRITICAL</div>
-                </div>
-                <div class="table-wrapper">
-                    <table>
-                        <thead><tr><th>Metric</th><th>Value</th><th>Score</th></tr></thead>
-                        <tbody>
-                            <tr><td>Attack Vector</td><td>Network</td><td>AV:N</td></tr>
-                            <tr><td>Attack Complexity</td><td>Low</td><td>AC:L</td></tr>
-                            <tr><td>Privileges Required</td><td>None</td><td>PR:N</td></tr>
-                            <tr><td>User Interaction</td><td>None</td><td>UI:N</td></tr>
-                            <tr><td>Scope</td><td>Changed</td><td>S:C</td></tr>
-                            <tr><td>CIA Impact</td><td>High/High/High</td><td>C:H/I:H/A:H</td></tr>
-                        </tbody>
-                    </table>
-                </div>
-                <div class="scenario-grid">
-                    <div class="scenario"><h4>Drive-by Download</h4><p>Email link → Exploit → Malware</p></div>
-                    <div class="scenario"><h4>Malvertising</h4><p>Ad iframe → Persistence</p></div>
-                    <div class="scenario"><h4>Watering Hole</h4><p>Compromise site → Wait</p></div>
-                    <div class="scenario"><h4>Exfiltration</h4><p>Cloud folder → Auto-sync</p></div>
-                </div>
-            </section>
-
             <section id="root-causes">
-                <h2>Part 10: Root Causes</h2>
+                <h2>Part 8: Root Causes</h2>
                 <div class="diagram-container">
                     <pre class="mermaid">
 flowchart TB
@@ -458,7 +412,7 @@ flowchart TB
             </section>
 
             <section id="fix">
-                <h2>Part 11: The Fix</h2>
+                <h2>Part 9: The Fix</h2>
                 <div class="diagram-container">
                     <pre class="mermaid">
 flowchart TB
@@ -488,7 +442,7 @@ if (!isAuthorizedSender(sender)) {
             </section>
 
             <section id="lessons">
-                <h2>Part 12: Lessons Learned</h2>
+                <h2>Part 10: Lessons Learned</h2>
                 <div class="lessons-grid">
                     <div class="lesson-category">
                         <h4>Extension Developers</h4>
@@ -506,7 +460,7 @@ if (!isAuthorizedSender(sender)) {
             </section>
 
             <section id="bigger-picture">
-                <h2>Part 13: The Bigger Picture</h2>
+                <h2>Part 11: The Bigger Picture</h2>
                 <blockquote class="key-takeaway">
                     <strong>Always verify who's asking. Always sanitize paths. Always assume external input is malicious.</strong>
                 </blockquote>
